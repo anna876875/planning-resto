@@ -1,12 +1,12 @@
-import type { Config } from "jest";
 import nextJest from "next/jest.js";
 
-// Crée une config Jest préconfigurée pour Next.js (SWC transform, alias @/, etc.)
+// next/jest configure SWC transform, alias @/, variables d'env Next.js, etc.
 const createJestConfig = nextJest({ dir: "./" });
 
-const config: Config = {
+/** @type {import('jest').Config} */
+const config = {
   testEnvironment: "jsdom",
-  setupFilesAfterFramework: ["<rootDir>/jest.setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },

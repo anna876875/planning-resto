@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   description: "Gestion de planning pour la restauration",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <body>{children}</body>
