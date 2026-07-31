@@ -1,10 +1,18 @@
 {
   "name": "restaurant-planning-saas",
   "private": true,
-  "workspaces": ["app"],
+  "workspaces": [
+    "app"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=app",
     "build": "npm run build --workspace=app",
-    "lint": "npm run lint --workspace=app"
+    "lint": "npm run lint --workspace=app",
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset"
+  },
+  "devDependencies": {
+    "supabase": "^2.111.0"
   }
 }
