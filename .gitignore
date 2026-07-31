@@ -1,0 +1,47 @@
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Editors ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# ─── Environment ─────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# app — Next.js / Node.js
+# ═══════════════════════════════════════════════════════════════════════════════
+app/node_modules/
+app/.next/
+app/out/
+app/.turbo/
+app/dist/
+app/.env.local
+app/.env.development.local
+app/.env.test.local
+app/.env.production.local
+app/npm-debug.log*
+app/yarn-debug.log*
+app/yarn-error.log*
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# solver — Java / Maven / Spring Boot
+# ═══════════════════════════════════════════════════════════════════════════════
+solver/target/
+solver/.mvn/repository/
+solver/*.class
+solver/*.jar
+solver/*.war
+solver/*.ear
+solver/hs_err_pid*
+
+# Maven wrapper jar (commité uniquement si nécessaire hors CI)
+!solver/.mvn/wrapper/maven-wrapper.jar
+!solver/.mvn/wrapper/maven-wrapper.properties

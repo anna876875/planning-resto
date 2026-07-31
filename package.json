@@ -1,0 +1,10 @@
+{
+  "name": "restaurant-planning-saas",
+  "private": true,
+  "workspaces": ["app"],
+  "scripts": {
+    "dev": "npm run dev --workspace=app",
+    "build": "npm run build --workspace=app",
+    "lint": "npm run lint --workspace=app"
+  }
+}
