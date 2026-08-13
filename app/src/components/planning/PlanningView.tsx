@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
 import type { ShiftType, Role } from "@/types/planning";
 
-// ─── Date helpers ────────────────────────────────────────────────────────────
+// ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -40,48 +43,42 @@ const MONTH_NAMES = [
   "déc",
 ];
 
-// ─── Config UI ───────────────────────────────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────────────────────────
 
-const SHIFT_CONFIG: Record<
-  ShiftType,
-  { label: string; hours: string; bg: string; text: string; dot: string }
-> = {
+type ShiftConfig = { label: string; hours: string; className: string };
+
+const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
   matin: {
     label: "Matin",
     hours: "7h – 15h",
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    dot: "bg-blue-400",
+    className: "bg-blue-100 text-blue-800 border-blue-200",
   },
   soir: {
     label: "Soir",
     hours: "15h – 23h",
-    bg: "bg-violet-50",
-    text: "text-violet-700",
-    dot: "bg-violet-400",
+    className: "bg-violet-100 text-violet-800 border-violet-200",
   },
   coupure: {
     label: "Coupure",
-    hours: "10h-15h · 18h-23h",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    dot: "bg-amber-400",
+    hours: "10h · 18h",
+    className: "bg-amber-100 text-amber-800 border-amber-200",
   },
   repos: {
     label: "Repos",
     hours: "",
-    bg: "bg-gray-50",
-    text: "text-gray-400",
-    dot: "bg-gray-300",
+    className: "bg-muted text-muted-foreground border-border",
   },
 };
 
-const ROLE_CONFIG: Record<Role, { label: string; badge: string }> = {
-  chef_cuisine: { label: "Chef cuisine", badge: "bg-red-100 text-red-700" },
-  chef_partie: { label: "Chef de partie", badge: "bg-orange-100 text-orange-700" },
-  serveur: { label: "Serveur", badge: "bg-sky-100 text-sky-700" },
-  barman: { label: "Barman", badge: "bg-emerald-100 text-emerald-700" },
-  plongeur: { label: "Plongeur", badge: "bg-gray-100 text-gray-600" },
+const ROLE_CONFIG: Record<Role, { label: string; className: string }> = {
+  chef_cuisine: { label: "Chef cuisine", className: "bg-red-100 text-red-800 border-red-200" },
+  chef_partie: {
+    label: "Chef de partie",
+    className: "bg-orange-100 text-orange-800 border-orange-200",
+  },
+  serveur: { label: "Serveur", className: "bg-sky-100 text-sky-800 border-sky-200" },
+  barman: { label: "Barman", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  plongeur: { label: "Plongeur", className: "bg-muted text-muted-foreground border-border" },
 };
 
 const SHIFT_HOURS: Record<ShiftType, number> = {
@@ -100,56 +97,65 @@ export function PlanningView() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekEnd = weekDays[6];
 
-  const startMonth = MONTH_NAMES[weekStart.getMonth()];
-  const endMonth = MONTH_NAMES[weekEnd.getMonth()];
+  const sm = MONTH_NAMES[weekStart.getMonth()];
+  const em = MONTH_NAMES[weekEnd.getMonth()];
   const weekLabel =
-    startMonth === endMonth
-      ? `${weekStart.getDate()} – ${weekEnd.getDate()} ${endMonth} ${weekEnd.getFullYear()}`
-      : `${weekStart.getDate()} ${startMonth} – ${weekEnd.getDate()} ${endMonth} ${weekEnd.getFullYear()}`;
+    sm === em
+      ? `${weekStart.getDate()} – ${weekEnd.getDate()} ${em} ${weekEnd.getFullYear()}`
+      : `${weekStart.getDate()} ${sm} – ${weekEnd.getDate()} ${em} ${weekEnd.getFullYear()}`;
 
   const shifts = getShiftsForWeek(toYMD(weekStart));
   const todayYMD = toYMD(new Date());
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-background min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
+      <header className="bg-card border-border sticky top-0 z-10 border-b px-6 py-4 shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-900">Planning restaurant</h1>
           <div className="flex items-center gap-2">
-            <button
+            <CalendarDays className="text-primary h-5 w-5" />
+            <h1 className="text-foreground text-lg font-semibold">Planning restaurant</h1>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setWeekOffset((w) => w - 1)}
-              className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
               aria-label="Semaine précédente"
             >
-              ←
-            </button>
-            <span className="w-52 text-center text-sm font-medium text-gray-700">{weekLabel}</span>
-            <button
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+
+            <span className="text-foreground w-56 text-center text-sm font-medium">
+              {weekLabel}
+            </span>
+
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setWeekOffset((w) => w + 1)}
-              className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
               aria-label="Semaine suivante"
             >
-              →
-            </button>
-            <button
-              onClick={() => setWeekOffset(0)}
-              className="ml-2 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50"
-            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+
+            <Button variant="outline" size="sm" className="ml-2" onClick={() => setWeekOffset(0)}>
               Aujourd&apos;hui
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Grid */}
       <main className="mx-auto max-w-7xl px-6 py-6">
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="bg-card border-border overflow-hidden rounded-xl border shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
+              {/* Day headers */}
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/80">
-                  <th className="w-48 px-5 py-3 text-left text-xs font-medium tracking-wide text-gray-500 uppercase">
+                <tr className="border-border bg-muted/50 border-b">
+                  <th className="text-muted-foreground w-44 px-5 py-3 text-left text-xs font-medium tracking-wide uppercase">
                     Employé
                   </th>
                   {weekDays.map((day, i) => {
@@ -158,33 +164,34 @@ export function PlanningView() {
                     return (
                       <th
                         key={i}
-                        className={`w-32 px-2 py-3 text-center ${isWeekend ? "bg-gray-50" : ""}`}
+                        className={`w-28 px-2 py-3 text-center ${isWeekend ? "bg-muted/30" : ""}`}
                       >
-                        <div
-                          className={`text-xs font-medium tracking-wide uppercase ${isToday ? "text-blue-600" : "text-gray-500"}`}
+                        <p
+                          className={`text-xs font-medium tracking-wide uppercase ${isToday ? "text-primary" : "text-muted-foreground"}`}
                         >
                           {DAY_NAMES[i]}
-                        </div>
-                        <div
+                        </p>
+                        <p
                           className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold ${
                             isToday
-                              ? "bg-blue-600 text-white"
+                              ? "bg-primary text-primary-foreground"
                               : isWeekend
-                                ? "text-gray-400"
-                                : "text-gray-800"
+                                ? "text-muted-foreground"
+                                : "text-foreground"
                           }`}
                         >
                           {day.getDate()}
-                        </div>
+                        </p>
                       </th>
                     );
                   })}
-                  <th className="w-20 px-4 py-3 text-center text-xs font-medium tracking-wide text-gray-500 uppercase">
+                  <th className="text-muted-foreground w-16 px-4 py-3 text-center text-xs font-medium tracking-wide uppercase">
                     Total
                   </th>
                 </tr>
               </thead>
 
+              {/* Employee rows */}
               <tbody>
                 {employees.map((employee, rowIdx) => {
                   const employeeShifts = shifts.filter((s) => s.employeeId === employee.id);
@@ -192,61 +199,58 @@ export function PlanningView() {
                     (sum, s) => sum + SHIFT_HOURS[s.type],
                     0
                   );
+                  const roleCfg = ROLE_CONFIG[employee.role];
 
                   return (
                     <tr
                       key={employee.id}
-                      className={`border-b border-gray-100 transition-colors last:border-0 hover:bg-blue-50/30 ${
-                        rowIdx % 2 === 1 ? "bg-gray-50/40" : "bg-white"
+                      className={`border-border hover:bg-muted/20 border-b transition-colors last:border-0 ${
+                        rowIdx % 2 === 1 ? "bg-muted/10" : ""
                       }`}
                     >
-                      {/* Employee info */}
+                      {/* Name + role */}
                       <td className="px-5 py-4">
-                        <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                        <span
-                          className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_CONFIG[employee.role].badge}`}
+                        <p className="text-foreground text-sm font-medium">{employee.name}</p>
+                        <Badge
+                          variant="outline"
+                          className={`mt-1 text-xs font-medium ${roleCfg.className}`}
                         >
-                          {ROLE_CONFIG[employee.role].label}
-                        </span>
+                          {roleCfg.label}
+                        </Badge>
                       </td>
 
                       {/* Shift cells */}
                       {weekDays.map((day, i) => {
                         const shift = employeeShifts.find((s) => s.date === toYMD(day));
                         const isWeekend = i >= 5;
+                        const cfg = shift ? SHIFT_CONFIG[shift.type] : null;
 
-                        if (!shift || shift.type === "repos") {
-                          return (
-                            <td
-                              key={i}
-                              className={`px-2 py-4 text-center ${isWeekend ? "bg-gray-50/60" : ""}`}
-                            >
-                              {shift?.type === "repos" ? (
-                                <span className="text-xs font-medium text-gray-300">Repos</span>
-                              ) : (
-                                <span className="text-gray-200">—</span>
-                              )}
-                            </td>
-                          );
-                        }
-
-                        const cfg = SHIFT_CONFIG[shift.type];
                         return (
-                          <td key={i} className={`px-2 py-3 ${isWeekend ? "bg-gray-50/60" : ""}`}>
-                            <div className={`rounded-lg px-3 py-2 ${cfg.bg}`}>
-                              <div className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</div>
-                              <div className={`mt-0.5 text-xs ${cfg.text} opacity-75`}>
-                                {cfg.hours}
-                              </div>
-                            </div>
+                          <td key={i} className={`px-2 py-3 ${isWeekend ? "bg-muted/20" : ""}`}>
+                            {cfg ? (
+                              shift?.type === "repos" ? (
+                                <p className="text-muted-foreground text-center text-xs">Repos</p>
+                              ) : (
+                                <div
+                                  className={`rounded-lg border px-2 py-2 text-center ${cfg.className}`}
+                                >
+                                  <p className="text-xs font-semibold">{cfg.label}</p>
+                                  <p className="mt-0.5 text-xs opacity-75">{cfg.hours}</p>
+                                </div>
+                              )
+                            ) : (
+                              <p className="text-muted-foreground/40 text-center text-sm">—</p>
+                            )}
                           </td>
                         );
                       })}
 
-                      {/* Total hours */}
+                      {/* Weekly total */}
                       <td className="px-4 py-4 text-center">
                         <span
-                          className={`text-sm font-semibold ${totalHours >= 35 ? "text-gray-800" : "text-amber-600"}`}
+                          className={`text-sm font-semibold ${
+                            totalHours < 35 ? "text-amber-600" : "text-foreground"
+                          }`}
                         >
                           {totalHours}h
                         </span>
@@ -260,16 +264,16 @@ export function PlanningView() {
         </div>
 
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center gap-6">
-          <span className="text-xs font-medium tracking-wide text-gray-400 uppercase">Légende</span>
-          {(Object.entries(SHIFT_CONFIG) as [ShiftType, (typeof SHIFT_CONFIG)[ShiftType]][]).map(
-            ([type, cfg]) => (
-              <div key={type} className="flex items-center gap-1.5">
-                <div className={`h-2.5 w-2.5 rounded-full ${cfg.dot}`} />
-                <span className="text-xs text-gray-600">{cfg.label}</span>
-              </div>
-            )
-          )}
+        <div className="mt-4 flex flex-wrap items-center gap-5">
+          <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            Légende
+          </span>
+          {(Object.entries(SHIFT_CONFIG) as [ShiftType, ShiftConfig][]).map(([type, cfg]) => (
+            <div key={type} className="flex items-center gap-1.5">
+              <div className={`h-3 w-3 rounded-sm border ${cfg.className}`} />
+              <span className="text-muted-foreground text-xs">{cfg.label}</span>
+            </div>
+          ))}
         </div>
       </main>
     </div>
