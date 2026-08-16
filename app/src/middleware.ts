@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Routes protégées — redirige vers /auth si non connecté
-  const protectedRoutes = ["/planning", "/onboarding"];
+  const protectedRoutes = ["/planning"];
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
 
   if (isProtected && !user) {

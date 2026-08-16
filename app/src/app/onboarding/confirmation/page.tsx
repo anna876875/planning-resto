@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { CheckCircle } from "lucide-react";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,24 +11,34 @@ export default async function ConfirmationPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
+  let profile = null;
+  let restaurant = null;
+  let membres = null;
 
-  const { data: restaurant } = await supabase
-    .from("restaurants")
-    .select("id, secteur, taille_equipe")
-    .eq("owner_id", user.id)
-    .single();
+  if (user) {
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+    profile = p;
 
-  const { data: membres } = await supabase
-    .from("team_members")
-    .select("prenom, nom, role, statut_contractuel")
-    .eq("restaurant_id", restaurant?.id ?? "");
+    const { data: r } = await supabase
+      .from("restaurants")
+      .select("id, secteur, taille_equipe")
+      .eq("owner_id", user.id)
+      .single();
+    restaurant = r;
+
+    if (restaurant?.id) {
+      const { data: m } = await supabase
+        .from("team_members")
+        .select("prenom, nom, role, statut_contractuel")
+        .eq("restaurant_id", restaurant.id);
+      membres = m;
+    }
+  }
 
   const secteurInfo = restaurant?.secteur ? SECTEUR_LABELS[restaurant.secteur as Secteur] : null;
 

@@ -92,45 +92,43 @@ export default function MembresPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/auth");
-      return;
-    }
 
-    const { data: restaurant } = await supabase
-      .from("restaurants")
-      .select("id")
-      .eq("owner_id", user.id)
-      .single();
+    if (user) {
+      const { data: restaurant } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("owner_id", user.id)
+        .single();
 
-    if (restaurant && membres.length > 0) {
-      for (const m of membres) {
-        const { data: tm } = await supabase
-          .from("team_members")
-          .insert({
-            restaurant_id: restaurant.id,
-            prenom: m.prenom,
-            nom: m.nom,
-            role: m.role,
-            statut_contractuel: m.statutContractuel,
-            heures_par_semaine: m.heuresParSemaine,
-          })
-          .select("id")
-          .single();
+      if (restaurant && membres.length > 0) {
+        for (const m of membres) {
+          const { data: tm } = await supabase
+            .from("team_members")
+            .insert({
+              restaurant_id: restaurant.id,
+              prenom: m.prenom,
+              nom: m.nom,
+              role: m.role,
+              statut_contractuel: m.statutContractuel,
+              heures_par_semaine: m.heuresParSemaine,
+            })
+            .select("id")
+            .single();
 
-        if (tm && m.indisponibilites.length > 0) {
-          await supabase.from("unavailabilities").insert(
-            m.indisponibilites.map((ind) => ({
-              team_member_id: tm.id,
-              type: ind.type,
-              jour_semaine: ind.jourSemaine ?? null,
-            }))
-          );
+          if (tm && m.indisponibilites.length > 0) {
+            await supabase.from("unavailabilities").insert(
+              m.indisponibilites.map((ind) => ({
+                team_member_id: tm.id,
+                type: ind.type,
+                jour_semaine: ind.jourSemaine ?? null,
+              }))
+            );
+          }
         }
       }
-    }
 
-    await supabase.from("profiles").update({ onboarding_step: "done" }).eq("id", user.id);
+      await supabase.from("profiles").update({ onboarding_step: "done" }).eq("id", user.id);
+    }
 
     router.push("/onboarding/confirmation");
   }

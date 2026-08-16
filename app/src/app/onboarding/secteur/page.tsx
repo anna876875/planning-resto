@@ -23,18 +23,13 @@ export default function SecteurPage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/auth");
-      return;
+
+    if (user) {
+      await supabase
+        .from("restaurants")
+        .upsert({ owner_id: user.id, secteur }, { onConflict: "owner_id" });
+      await supabase.from("profiles").update({ onboarding_step: "equipe" }).eq("id", user.id);
     }
-
-    // Upsert restaurant avec le secteur choisi
-    await supabase
-      .from("restaurants")
-      .upsert({ owner_id: user.id, secteur }, { onConflict: "owner_id" });
-
-    // Avance l'étape dans le profil
-    await supabase.from("profiles").update({ onboarding_step: "equipe" }).eq("id", user.id);
 
     router.push("/onboarding/equipe");
   }

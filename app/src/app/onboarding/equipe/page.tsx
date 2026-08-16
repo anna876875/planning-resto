@@ -26,15 +26,14 @@ export default function EquipePage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/auth");
-      return;
+
+    if (user) {
+      await supabase
+        .from("restaurants")
+        .update({ taille_equipe: taille })
+        .eq("owner_id", user.id);
+      await supabase.from("profiles").update({ onboarding_step: "membres" }).eq("id", user.id);
     }
-
-    // Mise à jour du restaurant avec la taille d'équipe
-    await supabase.from("restaurants").update({ taille_equipe: taille }).eq("owner_id", user.id);
-
-    await supabase.from("profiles").update({ onboarding_step: "membres" }).eq("id", user.id);
 
     router.push("/onboarding/membres");
   }

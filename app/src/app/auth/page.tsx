@@ -225,6 +225,19 @@ export default function AuthPage() {
               {mode === "inscription" ? "Se connecter" : "S'inscrire"}
             </button>
           </p>
+
+          {/* Mode démo */}
+          <div className="border-border border-t pt-4 text-center">
+            <p className="text-muted-foreground mb-2 text-xs">
+              Problème de connexion ? Explorez sans compte.
+            </p>
+            <a
+              href="/onboarding/secteur"
+              className="text-muted-foreground hover:text-foreground text-sm underline underline-offset-4 transition-colors"
+            >
+              Continuer en mode démo →
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>
