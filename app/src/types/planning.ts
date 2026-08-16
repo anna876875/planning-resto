@@ -8,9 +8,12 @@ export interface Employee {
 }
 
 export interface Shift {
+  id: string;
   employeeId: string;
   date: string; // YYYY-MM-DD
   type: ShiftType;
   start: string; // HH:mm
   end: string;
 }
+
+export type PlanningStatus = "brouillon" | "publié" | "modifié" | "verrouillé";

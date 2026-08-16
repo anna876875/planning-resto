@@ -35,6 +35,7 @@ function addDays(dateStr: string, days: number): string {
 export function getShiftsForWeek(weekStart: string): Shift[] {
   return employees.flatMap((employee) =>
     WEEK_PATTERNS[employee.id].map((type, day) => ({
+      id: `${employee.id}-${weekStart}-${day}`,
       employeeId: employee.id,
       date: addDays(weekStart, day),
       type,
