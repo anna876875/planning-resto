@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
@@ -108,47 +108,33 @@ export function PlanningView() {
   const todayYMD = toYMD(new Date());
 
   return (
-    <div className="bg-background min-h-screen">
-      {/* Header */}
-      <header className="bg-card border-border sticky top-0 z-10 border-b px-6 py-4 shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="text-primary h-5 w-5" />
-            <h1 className="text-foreground text-lg font-semibold">Planning restaurant</h1>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setWeekOffset((w) => w - 1)}
-              aria-label="Semaine précédente"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <span className="text-foreground w-56 text-center text-sm font-medium">
-              {weekLabel}
-            </span>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setWeekOffset((w) => w + 1)}
-              aria-label="Semaine suivante"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-
-            <Button variant="outline" size="sm" className="ml-2" onClick={() => setWeekOffset(0)}>
-              Aujourd&apos;hui
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="bg-background">
+      {/* Navigation semaine */}
+      <div className="border-border bg-muted/30 flex items-center justify-center gap-2 border-b px-6 py-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setWeekOffset((w) => w - 1)}
+          aria-label="Semaine précédente"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-foreground w-56 text-center text-sm font-medium">{weekLabel}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setWeekOffset((w) => w + 1)}
+          aria-label="Semaine suivante"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" className="ml-2" onClick={() => setWeekOffset(0)}>
+          Aujourd&apos;hui
+        </Button>
+      </div>
 
       {/* Grid */}
-      <main className="mx-auto max-w-7xl px-6 py-6">
+      <main className="px-6 py-6">
         <div className="bg-card border-border overflow-hidden rounded-xl border shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">

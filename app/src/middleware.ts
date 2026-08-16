@@ -32,9 +32,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth", request.url));
   }
 
-  // Redirige vers /onboarding si connecté mais onboarding non terminé
-  if (user && pathname === "/") {
-    return NextResponse.redirect(new URL("/onboarding/secteur", request.url));
+  // Redirige la racine vers le dashboard
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;
