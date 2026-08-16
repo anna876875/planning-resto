@@ -24,6 +24,8 @@ export default function SecteurPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    sessionStorage.setItem("demo_secteur", secteur);
+
     if (user) {
       await supabase
         .from("restaurants")

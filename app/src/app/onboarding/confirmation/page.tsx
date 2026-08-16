@@ -1,50 +1,98 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { CheckCircle } from "lucide-react";
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { supabase } from "@/lib/supabase/client";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { SECTEUR_LABELS, TAILLE_LABELS } from "@/types/onboarding";
-import type { Secteur, TailleEquipe } from "@/types/onboarding";
+import { SECTEUR_LABELS, TAILLE_LABELS, STATUT_LABELS } from "@/types/onboarding";
+import type { Secteur, TailleEquipe, StatutContractuel } from "@/types/onboarding";
 import Link from "next/link";
 
-export default async function ConfirmationPage() {
-  const supabase = await createSupabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+interface MembreResume {
+  prenom: string;
+  nom: string;
+  role: string;
+  statutContractuel: string;
+}
 
-  let profile = null;
-  let restaurant = null;
-  let membres = null;
+interface ConfirmationData {
+  prenom: string | null;
+  secteur: string | null;
+  taille: string | null;
+  membres: MembreResume[];
+}
 
-  if (user) {
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-    profile = p;
+export default function ConfirmationPage() {
+  const [data, setData] = useState<ConfirmationData>({
+    prenom: null,
+    secteur: null,
+    taille: null,
+    membres: [],
+  });
 
-    const { data: r } = await supabase
-      .from("restaurants")
-      .select("id, secteur, taille_equipe")
-      .eq("owner_id", user.id)
-      .single();
-    restaurant = r;
+  useEffect(() => {
+    async function charger() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (restaurant?.id) {
-      const { data: m } = await supabase
-        .from("team_members")
-        .select("prenom, nom, role, statut_contractuel")
-        .eq("restaurant_id", restaurant.id);
-      membres = m;
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", user.id)
+          .single();
+
+        const { data: restaurant } = await supabase
+          .from("restaurants")
+          .select("id, secteur, taille_equipe")
+          .eq("owner_id", user.id)
+          .single();
+
+        let membres: MembreResume[] = [];
+        if (restaurant?.id) {
+          const { data: m } = await supabase
+            .from("team_members")
+            .select("prenom, nom, role, statut_contractuel")
+            .eq("restaurant_id", restaurant.id);
+          membres = (m ?? []).map((row) => ({
+            prenom: row.prenom,
+            nom: row.nom,
+            role: row.role,
+            statutContractuel: row.statut_contractuel,
+          }));
+        }
+
+        setData({
+          prenom: profile?.full_name?.split(" ")[0] ?? null,
+          secteur: restaurant?.secteur ?? null,
+          taille: restaurant?.taille_equipe ?? null,
+          membres,
+        });
+      } else {
+        const membresRaw = sessionStorage.getItem("demo_membres");
+        setData({
+          prenom: null,
+          secteur: sessionStorage.getItem("demo_secteur"),
+          taille: sessionStorage.getItem("demo_taille"),
+          membres: membresRaw
+            ? (JSON.parse(membresRaw) as MembreResume[]).map((m) => ({
+                prenom: m.prenom,
+                nom: m.nom,
+                role: m.role,
+                statutContractuel: m.statutContractuel,
+              }))
+            : [],
+        });
+      }
     }
-  }
 
-  const secteurInfo = restaurant?.secteur ? SECTEUR_LABELS[restaurant.secteur as Secteur] : null;
+    charger();
+  }, []);
 
-  const tailleInfo = restaurant?.taille_equipe
-    ? TAILLE_LABELS[restaurant.taille_equipe as TailleEquipe]
-    : null;
+  const secteurInfo = data.secteur ? SECTEUR_LABELS[data.secteur as Secteur] : null;
+  const tailleInfo = data.taille ? TAILLE_LABELS[data.taille as TailleEquipe] : null;
 
   return (
     <div className="space-y-8">
@@ -53,8 +101,10 @@ export default async function ConfirmationPage() {
         <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           <CheckCircle className="text-primary h-8 w-8" />
         </div>
-        <h1 className="text-2xl font-bold">Bienvenue, {profile?.full_name?.split(" ")[0]} !</h1>
-        <p className="text-muted-foreground mt-1">Votre espace est prêt. Voici un récapitulatif.</p>
+        <h1 className="text-2xl font-bold">
+          {data.prenom ? `Bienvenue, ${data.prenom} !` : "Votre espace est prêt !"}
+        </h1>
+        <p className="text-muted-foreground mt-1">Voici un récapitulatif de votre configuration.</p>
       </div>
 
       {/* Récapitulatif */}
@@ -87,19 +137,22 @@ export default async function ConfirmationPage() {
           </Card>
         )}
 
-        {membres && membres.length > 0 && (
+        {data.membres.length > 0 && (
           <Card>
             <CardContent className="px-5 py-4">
               <p className="text-muted-foreground mb-3 text-xs font-medium tracking-wide uppercase">
-                Équipe ({membres.length} membre{membres.length > 1 ? "s" : ""})
+                Équipe ({data.membres.length} membre{data.membres.length > 1 ? "s" : ""})
               </p>
               <ul className="space-y-1.5">
-                {membres.map((m, i) => (
+                {data.membres.map((m, i) => (
                   <li key={i} className="flex items-center justify-between text-sm">
                     <span className="font-medium">
                       {m.prenom} {m.nom}
                     </span>
-                    <span className="text-muted-foreground">{m.role}</span>
+                    <span className="text-muted-foreground">
+                      {STATUT_LABELS[m.statutContractuel as StatutContractuel] ??
+                        m.statutContractuel}
+                    </span>
                   </li>
                 ))}
               </ul>

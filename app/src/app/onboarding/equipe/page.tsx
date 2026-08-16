@@ -27,11 +27,10 @@ export default function EquipePage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    sessionStorage.setItem("demo_taille", taille);
+
     if (user) {
-      await supabase
-        .from("restaurants")
-        .update({ taille_equipe: taille })
-        .eq("owner_id", user.id);
+      await supabase.from("restaurants").update({ taille_equipe: taille }).eq("owner_id", user.id);
       await supabase.from("profiles").update({ onboarding_step: "membres" }).eq("id", user.id);
     }
 

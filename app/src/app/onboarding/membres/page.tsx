@@ -93,6 +93,8 @@ export default function MembresPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    sessionStorage.setItem("demo_membres", JSON.stringify(membres));
+
     if (user) {
       const { data: restaurant } = await supabase
         .from("restaurants")
