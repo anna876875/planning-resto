@@ -68,11 +68,11 @@ const MOIS_COURT = [
   "juil", "août", "sep", "oct", "nov", "déc",
 ];
 
-const SHIFT_COLORS: Record<string, string> = {
-  matin: "bg-blue-100 text-blue-700",
-  soir: "bg-violet-100 text-violet-700",
-  coupure: "bg-amber-100 text-amber-700",
-};
+const SERVICE_CONFIG = [
+  { type: "matin",   label: "Matin",   dot: "bg-blue-400",   pill: "bg-blue-100 text-blue-700" },
+  { type: "soir",    label: "Soir",    dot: "bg-violet-400", pill: "bg-violet-100 text-violet-700" },
+  { type: "coupure", label: "Coupure", dot: "bg-amber-400",  pill: "bg-amber-100 text-amber-700" },
+] as const;
 
 const STATUT_BADGE: Record<
   PlanningRecord["statut"],
@@ -173,16 +173,18 @@ export default function DashboardPage() {
         const date = addDays(monday, i);
         const dateYMD = toYMD(date);
         const dayShifts = weekShifts.filter((s) => s.date === dateYMD && s.type !== "repos");
+        const services = SERVICE_CONFIG.map((svc) => ({
+          ...svc,
+          count: dayShifts.filter((s) => s.type === svc.type).length,
+        })).filter((svc) => svc.count > 0);
         return {
           label: JOURS_COURT[i],
           date: `${date.getDate()}`,
           dateYMD,
           isToday: dateYMD === todayYMD,
           isWeekend: i >= 5,
-          workers: dayShifts.map((s) => ({
-            name: employees.find((e) => e.id === s.employeeId)?.name.split(" ")[0] ?? "?",
-            type: s.type,
-          })),
+          services,
+          totalWorking: dayShifts.length,
         };
       }),
     [monday, weekShifts, todayYMD]
@@ -250,7 +252,11 @@ export default function DashboardPage() {
                         </p>
                       </div>
                     </div>
-                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", SHIFT_COLORS[s.type])}>
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium",
+                      s.type === "matin" ? "bg-blue-100 text-blue-700" :
+                      s.type === "soir" ? "bg-violet-100 text-violet-700" :
+                      "bg-amber-100 text-amber-700"
+                    )}>
                       {s.type === "matin" ? "Matin" : s.type === "soir" ? "Soir" : "Coupure"}
                     </span>
                   </CardContent>
@@ -306,46 +312,72 @@ export default function DashboardPage() {
                   key={day.dateYMD}
                   href="/dashboard/plannings/actif"
                   className={cn(
-                    "w-28 shrink-0 overflow-hidden rounded-xl border transition-shadow hover:shadow-sm md:w-auto",
-                    day.isToday ? "border-primary ring-primary ring-2" : "border-border",
-                    day.isWeekend && !day.isToday && "bg-muted/30"
+                    "w-32 shrink-0 overflow-hidden rounded-xl border transition-all hover:shadow-md md:w-auto",
+                    day.isToday
+                      ? "border-primary ring-primary ring-2"
+                      : "border-border hover:border-primary/40",
+                    day.isWeekend && !day.isToday && "bg-muted/20"
                   )}
                 >
-                  <div className="p-2.5">
-                    <div
+                  {/* En-tête jour */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-between px-3 py-2",
+                      day.isToday ? "bg-primary text-primary-foreground" : "bg-muted/30"
+                    )}
+                  >
+                    <span className="text-xs font-semibold">{day.label}</span>
+                    <span
                       className={cn(
-                        "mb-2 flex items-baseline gap-1 text-xs font-semibold",
-                        day.isToday ? "text-primary" : "text-foreground"
+                        "text-xs font-bold",
+                        day.isToday ? "text-primary-foreground" : "text-foreground"
                       )}
                     >
-                      {day.label}
-                      <span className="text-muted-foreground font-normal">{day.date}</span>
-                    </div>
-                    <p className="text-lg font-bold leading-none">{day.workers.length}</p>
-                    <p className="text-muted-foreground mb-2 text-[10px]">
-                      / {employees.length}
-                    </p>
-                    <div className="space-y-0.5">
-                      {day.workers.slice(0, 3).map((w) => (
-                        <span
-                          key={w.name}
-                          className={cn(
-                            "block truncate rounded px-1 py-0.5 text-[10px] font-medium",
-                            SHIFT_COLORS[w.type]
-                          )}
-                        >
-                          {w.name}
-                        </span>
-                      ))}
-                      {day.workers.length > 3 && (
-                        <span className="text-muted-foreground text-[10px]">
-                          +{day.workers.length - 3}
-                        </span>
-                      )}
-                      {day.workers.length === 0 && (
-                        <span className="text-muted-foreground text-[10px]">Fermé</span>
-                      )}
-                    </div>
+                      {day.date}
+                    </span>
+                  </div>
+
+                  {/* Corps */}
+                  <div className="p-2.5">
+                    {day.services.length === 0 ? (
+                      <p className="text-muted-foreground py-2 text-center text-xs">Fermé</p>
+                    ) : (
+                      <>
+                        {/* Nombre de services + total employés */}
+                        <div className="mb-2 flex items-end justify-between">
+                          <div>
+                            <p className="text-2xl font-bold leading-none">{day.services.length}</p>
+                            <p className="text-muted-foreground text-[10px]">
+                              {day.services.length === 1 ? "service" : "services"}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold leading-none">{day.totalWorking}</p>
+                            <p className="text-muted-foreground text-[10px]">emp.</p>
+                          </div>
+                        </div>
+
+                        {/* Détail par service */}
+                        <div className="space-y-1">
+                          {day.services.map((svc) => (
+                            <div key={svc.type} className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1">
+                                <span className={cn("h-1.5 w-1.5 rounded-full", svc.dot)} />
+                                <span className="text-[10px] font-medium">{svc.label}</span>
+                              </div>
+                              <span
+                                className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                                  svc.pill
+                                )}
+                              >
+                                {svc.count}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </Link>
               ))}
