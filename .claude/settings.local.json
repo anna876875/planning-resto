@@ -46,7 +46,16 @@
       "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css?v=1786910911090\")",
       "Bash(npx shadcn@latest add tooltip dropdown-menu sheet dialog --yes)",
       "Bash(npx shadcn@latest add tooltip dropdown-menu sheet dialog)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/dashboard)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\" http://localhost:3000/)",
+      "Bash(curl -s -I http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/dashboard)",
+      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css?v=1786961246794\")",
+      "Bash(curl -s \"http://localhost:3001/_next/static/css/app/layout.css\")",
+      "Bash(rm -rf \"/Users/anna/Documents/AI Factory/app/.next\")",
+      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css$\\(curl -s http://localhost:3000/dashboard)",
+      "Bash(npx shadcn@latest add popover --yes)"
     ]
   }
 }
