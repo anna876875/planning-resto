@@ -62,7 +62,7 @@ export default function AuthPage() {
       );
       return;
     }
-    router.push("/onboarding/secteur");
+    router.push("/dashboard");
   }
 
   async function onConnexion(data: ConnexionData) {
@@ -75,7 +75,7 @@ export default function AuthPage() {
       setErreurServeur("Identifiants incorrects. Vérifiez votre e-mail et mot de passe.");
       return;
     }
-    router.push("/onboarding/secteur");
+    router.push("/dashboard");
   }
 
   function basculerMode() {
@@ -232,7 +232,7 @@ export default function AuthPage() {
               Problème de connexion ? Explorez sans compte.
             </p>
             <a
-              href="/onboarding/secteur"
+              href="/dashboard"
               className="text-muted-foreground hover:text-foreground text-sm underline underline-offset-4 transition-colors"
             >
               Continuer en mode démo →
