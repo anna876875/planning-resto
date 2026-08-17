@@ -10,11 +10,8 @@ import {
   Send,
   Lock,
   Unlock,
-  LayoutGrid,
-  List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ShiftModal } from "@/components/planning/ShiftModal";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
 import type { Shift, ShiftType, Role, PlanningStatus } from "@/types/planning";
@@ -46,432 +43,297 @@ function parseMinutes(time: string): number {
   return h * 60 + m;
 }
 
-function shiftHours(shift: Shift): number {
+function shiftDuration(shift: Shift): number {
   if (shift.type === "repos" || !shift.start || !shift.end) return 0;
-  const diff = parseMinutes(shift.end) - parseMinutes(shift.start);
-  return Math.max(0, diff / 60);
+  return Math.max(0, (parseMinutes(shift.end) - parseMinutes(shift.start)) / 60);
 }
 
-const DAY_NAMES = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const DAY_NAMES_LONG = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-const MONTH_NAMES = [
-  "jan", "fév", "mar", "avr", "mai", "juin",
-  "juil", "août", "sep", "oct", "nov", "déc",
-];
-const MONTH_NAMES_LONG = [
-  "janvier", "février", "mars", "avril", "mai", "juin",
-  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
-];
+const DAY_SHORT  = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const MONTH_SHORT = ["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-type ShiftConfig = { label: string; hours: string; className: string };
-
-const SHIFT_CONFIG: Record<ShiftType, ShiftConfig> = {
-  matin: { label: "Matin", hours: "7h–15h", className: "bg-blue-100 text-blue-800 border-blue-200" },
-  soir: { label: "Soir", hours: "15h–23h", className: "bg-violet-100 text-violet-800 border-violet-200" },
-  coupure: { label: "Coupure", hours: "10h–23h", className: "bg-amber-100 text-amber-800 border-amber-200" },
-  repos: { label: "Repos", hours: "", className: "bg-muted text-muted-foreground border-border" },
+const SHIFT_CONFIG: Record<ShiftType, { label: string; short: string; className: string; dot: string }> = {
+  matin:    { label: "Matin",   short: "M",  className: "bg-blue-50   text-blue-800   border-blue-200",   dot: "bg-blue-400"   },
+  soir:     { label: "Soir",    short: "S",  className: "bg-violet-50 text-violet-800 border-violet-200", dot: "bg-violet-400" },
+  coupure:  { label: "Coupure", short: "C",  className: "bg-amber-50  text-amber-800  border-amber-200",  dot: "bg-amber-400"  },
+  repos:    { label: "Repos",   short: "—",  className: "bg-muted/40  text-muted-foreground border-border", dot: "bg-muted-foreground" },
 };
 
-const ROLE_CONFIG: Record<Role, { label: string; className: string }> = {
-  chef_cuisine: { label: "Chef cuisine", className: "bg-red-100 text-red-800 border-red-200" },
-  chef_partie: { label: "Chef de partie", className: "bg-orange-100 text-orange-800 border-orange-200" },
-  serveur: { label: "Serveur", className: "bg-sky-100 text-sky-800 border-sky-200" },
-  barman: { label: "Barman", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  plongeur: { label: "Plongeur", className: "bg-muted text-muted-foreground border-border" },
+const ROLE_COLORS: Record<Role, string> = {
+  chef_cuisine: "bg-red-100    text-red-700",
+  chef_partie:  "bg-orange-100 text-orange-700",
+  serveur:      "bg-sky-100    text-sky-700",
+  barman:       "bg-emerald-100 text-emerald-700",
+  plongeur:     "bg-slate-100  text-slate-600",
 };
 
 const STATUS_CONFIG: Record<PlanningStatus, { label: string; color: string; dot: string }> = {
-  brouillon: { label: "Brouillon", color: "text-amber-700 bg-amber-50 border-amber-200", dot: "bg-amber-400" },
-  publié: { label: "Publié", color: "text-emerald-700 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
-  modifié: { label: "Modifié", color: "text-orange-700 bg-orange-50 border-orange-200", dot: "bg-orange-400" },
-  verrouillé: { label: "Verrouillé", color: "text-slate-700 bg-slate-100 border-slate-300", dot: "bg-slate-500" },
+  brouillon:  { label: "Brouillon",  color: "text-amber-700   bg-amber-50   border-amber-200",   dot: "bg-amber-400"   },
+  publié:     { label: "Publié",     color: "text-emerald-700 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
+  modifié:    { label: "Modifié",    color: "text-orange-700  bg-orange-50  border-orange-200",  dot: "bg-orange-400"  },
+  verrouillé: { label: "Verrouillé", color: "text-slate-700   bg-slate-100  border-slate-200",   dot: "bg-slate-500"   },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function PlanningView() {
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [dayIndex, setDayIndex] = useState(() => {
-    const d = new Date().getDay();
-    return d === 0 ? 6 : d - 1; // 0=Mon, 6=Sun
-  });
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
-  const [shiftsMap, setShiftsMap] = useState<Record<string, Shift[]>>({});
-  const [status, setStatus] = useState<PlanningStatus>("brouillon");
-  const [publishedStatus, setPublishedStatus] = useState<PlanningStatus | null>(null);
-  const [modal, setModal] = useState<{ employeeId: string; date: string } | null>(null);
+  const [weekOffset, setWeekOffset]       = useState(0);
+  const [shiftsMap, setShiftsMap]         = useState<Record<string, Shift[]>>({});
+  const [status, setStatus]               = useState<PlanningStatus>("brouillon");
+  const [publishedStatus, setPublished]   = useState<PlanningStatus | null>(null);
+  const [modal, setModal]                 = useState<{ employeeId: string; date: string } | null>(null);
+
+  // ─── Dates ─────────────────────────────────────────────────────────────────
 
   const weekStart = addDays(getWeekStart(new Date()), weekOffset * 7);
-  const weekKey = toYMD(weekStart);
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const weekEnd = weekDays[6];
+  const weekKey   = toYMD(weekStart);
+  const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekEnd   = weekDays[6];
+  const todayYMD  = toYMD(new Date());
 
-  const sm = MONTH_NAMES[weekStart.getMonth()];
-  const em = MONTH_NAMES[weekEnd.getMonth()];
+  const sm = MONTH_SHORT[weekStart.getMonth()];
+  const em = MONTH_SHORT[weekEnd.getMonth()];
   const weekLabel =
     sm === em
       ? `${weekStart.getDate()} – ${weekEnd.getDate()} ${em} ${weekEnd.getFullYear()}`
       : `${weekStart.getDate()} ${sm} – ${weekEnd.getDate()} ${em} ${weekEnd.getFullYear()}`;
 
-  const currentDay = weekDays[dayIndex];
-  const currentDayYMD = toYMD(currentDay);
-  const dayLabel = `${DAY_NAMES_LONG[dayIndex]} ${currentDay.getDate()} ${MONTH_NAMES_LONG[currentDay.getMonth()]}`;
-
   const shifts: Shift[] = shiftsMap[weekKey] ?? getShiftsForWeek(weekKey);
-  const todayYMD = toYMD(new Date());
-
-  // ─── Navigation jour ───────────────────────────────────────────────────────
-
-  function prevDay() {
-    if (dayIndex === 0) {
-      setWeekOffset((w) => w - 1);
-      setDayIndex(6);
-    } else {
-      setDayIndex((d) => d - 1);
-    }
-  }
-
-  function nextDay() {
-    if (dayIndex === 6) {
-      setWeekOffset((w) => w + 1);
-      setDayIndex(0);
-    } else {
-      setDayIndex((d) => d + 1);
-    }
-  }
-
-  function goToToday() {
-    setWeekOffset(0);
-    const d = new Date().getDay();
-    setDayIndex(d === 0 ? 6 : d - 1);
-  }
 
   // ─── Conflits ──────────────────────────────────────────────────────────────
 
   const conflicts = useMemo(() => {
-    const warnings: { type: "error" | "warning"; message: string }[] = [];
+    const w: { message: string }[] = [];
     employees.forEach((emp) => {
-      const empShifts = shifts.filter((s) => s.employeeId === emp.id);
-      const total = empShifts.reduce((sum, s) => sum + shiftHours(s), 0);
-      if (total > 35) {
-        warnings.push({ type: "warning", message: `${emp.name} — ${total}h cette semaine (max 35h)` });
-      }
-      const workDays = empShifts.filter((s) => s.type !== "repos").map((s) => s.date).sort();
-      let consecutive = 1;
+      const es = shifts.filter((s) => s.employeeId === emp.id);
+      const total = es.reduce((sum, s) => sum + shiftDuration(s), 0);
+      if (total > 35) w.push({ message: `${emp.name.split(" ")[0]} — ${total}h/sem (max 35h)` });
+      const workDays = es.filter((s) => s.type !== "repos").map((s) => s.date).sort();
+      let streak = 1;
       for (let i = 1; i < workDays.length; i++) {
-        const prev = new Date(workDays[i - 1]);
-        const curr = new Date(workDays[i]);
-        if ((curr.getTime() - prev.getTime()) / 86400000 === 1) {
-          consecutive++;
-          if (consecutive >= 6)
-            warnings.push({ type: "warning", message: `${emp.name} — ${consecutive} jours consécutifs` });
-        } else {
-          consecutive = 1;
-        }
+        const diff = (new Date(workDays[i]).getTime() - new Date(workDays[i - 1]).getTime()) / 86400000;
+        streak = diff === 1 ? streak + 1 : 1;
+        if (streak >= 6) w.push({ message: `${emp.name.split(" ")[0]} — ${streak} jours consécutifs` });
       }
     });
-    return warnings;
+    return w;
   }, [shifts]);
+
+  // ─── Totaux par colonne (nb actifs / jour) ─────────────────────────────────
+
+  const dayTotals = useMemo(
+    () =>
+      weekDays.map((day) => {
+        const dateStr = toYMD(day);
+        return shifts.filter((s) => s.date === dateStr && s.type !== "repos").length;
+      }),
+    [weekDays, shifts]
+  );
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
 
   function saveShift(data: Omit<Shift, "id"> & { id?: string }) {
-    const newShift: Shift = { ...data, id: data.id ?? crypto.randomUUID() };
+    const s: Shift = { ...data, id: data.id ?? crypto.randomUUID() };
     setShiftsMap((prev) => {
-      const current = prev[weekKey] ?? getShiftsForWeek(weekKey);
-      const without = current.filter((s) => !(s.employeeId === data.employeeId && s.date === data.date));
-      return { ...prev, [weekKey]: [...without, newShift] };
+      const cur = prev[weekKey] ?? getShiftsForWeek(weekKey);
+      return { ...prev, [weekKey]: [...cur.filter((x) => !(x.employeeId === s.employeeId && x.date === s.date)), s] };
     });
     if (publishedStatus === "publié") setStatus("modifié");
   }
 
-  function deleteShift(shiftId: string) {
+  function deleteShift(id: string) {
     setShiftsMap((prev) => {
-      const current = prev[weekKey] ?? getShiftsForWeek(weekKey);
-      return { ...prev, [weekKey]: current.filter((s) => s.id !== shiftId) };
+      const cur = prev[weekKey] ?? getShiftsForWeek(weekKey);
+      return { ...prev, [weekKey]: cur.filter((s) => s.id !== id) };
     });
     if (publishedStatus === "publié") setStatus("modifié");
   }
 
-  function publish() {
-    setStatus("publié");
-    setPublishedStatus("publié");
-  }
-
-  function toggleLock() {
-    setStatus((s) => (s === "verrouillé" ? (publishedStatus ?? "brouillon") : "verrouillé"));
-  }
-
+  function publish() { setStatus("publié"); setPublished("publié"); }
+  function toggleLock() { setStatus((s) => s === "verrouillé" ? (publishedStatus ?? "brouillon") : "verrouillé"); }
   function copyWeek() {
-    const prevKey = toYMD(addDays(weekStart, -7));
-    const prevShifts = shiftsMap[prevKey] ?? getShiftsForWeek(prevKey);
-    const copied: Shift[] = prevShifts.map((s) => ({
-      ...s,
-      id: crypto.randomUUID(),
-      date: toYMD(addDays(new Date(s.date + "T00:00:00"), 7)),
-    }));
-    setShiftsMap((prev) => ({ ...prev, [weekKey]: copied }));
+    const prev = shiftsMap[toYMD(addDays(weekStart, -7))] ?? getShiftsForWeek(toYMD(addDays(weekStart, -7)));
+    const copied = prev.map((s) => ({ ...s, id: crypto.randomUUID(), date: toYMD(addDays(new Date(s.date + "T00:00:00"), 7)) }));
+    setShiftsMap((m) => ({ ...m, [weekKey]: copied }));
     if (publishedStatus === "publié") setStatus("modifié");
   }
 
   const locked = status === "verrouillé";
+  const sc = STATUS_CONFIG[status];
   const modalEmployee = modal ? employees.find((e) => e.id === modal.employeeId) : null;
-  const modalShift = modal
-    ? shifts.find((s) => s.employeeId === modal.employeeId && s.date === modal.date)
-    : undefined;
-  const statusCfg = STATUS_CONFIG[status];
+  const modalShift    = modal ? shifts.find((s) => s.employeeId === modal.employeeId && s.date === modal.date) : undefined;
 
-  // ─── Barre commune ────────────────────────────────────────────────────────
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
 
-  const StatusBar = (
-    <div className="border-border bg-background flex flex-col gap-2 border-b px-4 py-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 md:px-6">
-      <div className="flex items-center justify-between gap-3 md:contents">
+      {/* ── Barre status ──────────────────────────────────────────────────── */}
+      <div className="border-border bg-background z-20 flex flex-wrap items-center gap-2 border-b px-4 py-2 md:gap-3 md:px-6">
         {/* Statut */}
-        <div className={cn("flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium", statusCfg.color)}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", statusCfg.dot)} />
-          {statusCfg.label}
+        <div className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", sc.color)}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", sc.dot)} />
+          {sc.label}
         </div>
 
-        {/* Toggle vue (mobile seulement) */}
-        <div className="flex rounded-lg border md:hidden" role="group">
-          <button
-            onClick={() => setViewMode("day")}
-            className={cn(
-              "flex items-center gap-1 rounded-l-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              viewMode === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-            )}
-          >
-            <List className="h-3.5 w-3.5" />
-            Jour
-          </button>
-          <button
-            onClick={() => setViewMode("week")}
-            className={cn(
-              "flex items-center gap-1 rounded-r-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              viewMode === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-            )}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Semaine
-          </button>
-        </div>
-      </div>
-
-      {/* Navigation semaine */}
-      <div className="flex items-center justify-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset((w) => w - 1)}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="text-foreground w-44 text-center text-sm font-medium md:w-52">{weekLabel}</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekOffset((w) => w + 1)}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button variant="outline" size="sm" className="ml-1 h-8 text-xs" onClick={() => { setWeekOffset(0); goToToday(); }}>
-          Auj.
-        </Button>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={copyWeek} disabled={locked}>
-          <Copy className="mr-1 h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Copier sem. préc.</span>
-          <span className="sm:hidden">Copier</span>
-        </Button>
-        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={toggleLock}>
-          {locked ? <Unlock className="mr-1 h-3.5 w-3.5" /> : <Lock className="mr-1 h-3.5 w-3.5" />}
-          {locked ? "Déverrouiller" : "Verr."}
-        </Button>
-        {status !== "publié" && (
-          <Button size="sm" className="h-8 text-xs" onClick={publish} disabled={locked}>
-            <Send className="mr-1 h-3.5 w-3.5" />
-            {status === "modifié" ? "Notifier" : "Publier"}
+        {/* Navigation semaine — centré */}
+        <div className="flex flex-1 items-center justify-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWeekOffset((w) => w - 1)}>
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-        )}
-      </div>
-    </div>
-  );
+          <span className="min-w-40 text-center text-sm font-semibold">{weekLabel}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWeekOffset((w) => w + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setWeekOffset(0)}>
+            Auj.
+          </Button>
+        </div>
 
-  // ─── Alertes conflits ─────────────────────────────────────────────────────
-
-  const ConflictBar = conflicts.length > 0 && (
-    <div className="border-border border-b bg-amber-50 px-4 py-2 md:px-6">
-      <div className="flex flex-col gap-1.5 md:flex-row md:flex-wrap md:gap-3">
-        {conflicts.map((c, i) => (
-          <div key={i} className="flex items-center gap-1.5 text-xs text-amber-800">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            {c.message}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // ─── Vue Jour (mobile) ────────────────────────────────────────────────────
-
-  const DayView = (
-    <div className="flex flex-col">
-      {/* Navigation jour */}
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
-        <Button variant="ghost" size="sm" className="gap-1" onClick={prevDay}>
-          <ChevronLeft className="h-4 w-4" />
-          Préc.
-        </Button>
-        <div className="text-center">
-          <p className="text-sm font-semibold capitalize">{dayLabel}</p>
-          {currentDayYMD === todayYMD && (
-            <span className="text-primary text-xs font-medium">Aujourd&apos;hui</span>
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={copyWeek} disabled={locked}>
+            <Copy className="mr-1 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Copier sem. préc.</span>
+            <span className="sm:hidden">Copier</span>
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={toggleLock}>
+            {locked ? <Unlock className="mr-1 h-3.5 w-3.5" /> : <Lock className="mr-1 h-3.5 w-3.5" />}
+            {locked ? "Déverr." : "Verr."}
+          </Button>
+          {status !== "publié" ? (
+            <Button size="sm" className="h-7 text-xs" onClick={publish} disabled={locked}>
+              <Send className="mr-1 h-3.5 w-3.5" />
+              {status === "modifié" ? "Notifier" : "Publier"}
+            </Button>
+          ) : (
+            <span className="text-muted-foreground text-xs">✓ Publié</span>
           )}
         </div>
-        <Button variant="ghost" size="sm" className="gap-1" onClick={nextDay}>
-          Suiv.
-          <ChevronRight className="h-4 w-4" />
-        </Button>
       </div>
 
-      {/* Liste employés pour ce jour */}
-      <div className="divide-border divide-y">
-        {employees.map((employee) => {
-          const shift = shifts.find((s) => s.employeeId === employee.id && s.date === currentDayYMD);
-          const cfg = shift ? SHIFT_CONFIG[shift.type] : null;
-          const roleCfg = ROLE_CONFIG[employee.role];
+      {/* ── Conflits ─────────────────────────────────────────────────────── */}
+      {conflicts.length > 0 && (
+        <div className="border-border flex flex-wrap gap-x-4 gap-y-1 border-b bg-amber-50 px-4 py-2">
+          {conflicts.map((c, i) => (
+            <span key={i} className="flex items-center gap-1 text-xs text-amber-800">
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              {c.message}
+            </span>
+          ))}
+        </div>
+      )}
 
-          return (
-            <div key={employee.id} className="flex items-center gap-3 px-4 py-3">
-              {/* Avatar */}
-              <div className="bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-primary">
-                {employee.name.charAt(0)}
-              </div>
+      {/* ── Grille ───────────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
 
-              {/* Infos */}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{employee.name}</p>
-                <Badge variant="outline" className={cn("text-[10px]", roleCfg.className)}>
-                  {roleCfg.label}
-                </Badge>
-              </div>
-
-              {/* Shift */}
-              <button
-                type="button"
-                disabled={locked}
-                onClick={() => setModal({ employeeId: employee.id, date: currentDayYMD })}
-                className={cn(
-                  "shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                  shift && shift.type !== "repos"
-                    ? cn("hover:opacity-80", cfg?.className)
-                    : shift?.type === "repos"
-                      ? "border-border text-muted-foreground hover:border-primary/30"
-                      : "border-dashed border-primary/30 text-primary/60 hover:border-primary hover:text-primary",
-                  locked && "cursor-not-allowed opacity-50"
-                )}
-              >
-                {shift && shift.type !== "repos" ? (
-                  <span>
-                    {shift.start} – {shift.end}
-                  </span>
-                ) : shift?.type === "repos" ? (
-                  <span>Repos</span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <Plus className="h-3 w-3" />
-                    Ajouter
-                  </span>
-                )}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Légende */}
-      <div className="border-border flex flex-wrap items-center gap-3 border-t px-4 py-3">
-        {(Object.entries(SHIFT_CONFIG) as [ShiftType, ShiftConfig][]).map(([type, cfg]) => (
-          <div key={type} className="flex items-center gap-1">
-            <div className={cn("h-2.5 w-2.5 rounded-sm border", cfg.className)} />
-            <span className="text-muted-foreground text-xs">{cfg.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  // ─── Vue Semaine (table) ──────────────────────────────────────────────────
-
-  const WeekView = (
-    <div className="flex flex-col">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-border bg-muted/40 border-b">
-              <th className="text-muted-foreground w-36 px-4 py-3 text-left text-xs font-medium tracking-wide uppercase md:w-40 md:px-5">
-                Employé
+          {/* En-tête jours */}
+          <thead className="sticky top-0 z-20">
+            <tr className="border-border bg-card border-b">
+              {/* Colonne employé — cellule sticky */}
+              <th className="border-border bg-card sticky left-0 z-30 w-44 border-r px-4 py-2.5 text-left md:w-52">
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Équipe · {employees.length} pers.
+                </span>
               </th>
+
               {weekDays.map((day, i) => {
-                const isToday = toYMD(day) === todayYMD;
+                const isToday   = toYMD(day) === todayYMD;
                 const isWeekend = i >= 5;
                 return (
-                  <th key={i} className={cn("w-24 px-1.5 py-3 text-center md:w-28 md:px-2", isWeekend && "bg-muted/30")}>
-                    <p className={cn("text-xs font-medium tracking-wide uppercase", isToday ? "text-primary" : "text-muted-foreground")}>
-                      {DAY_NAMES[i]}
+                  <th
+                    key={i}
+                    className={cn(
+                      "min-w-[108px] px-1 py-2 text-center",
+                      isWeekend && "bg-muted/30",
+                      isToday && "bg-primary/5"
+                    )}
+                  >
+                    <p className={cn("text-[10px] font-semibold tracking-widest uppercase",
+                      isToday ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {DAY_SHORT[i]}
                     </p>
                     <p className={cn(
-                      "mx-auto mt-1 flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold md:h-7 md:w-7",
-                      isToday ? "bg-primary text-primary-foreground" : isWeekend ? "text-muted-foreground" : "text-foreground"
+                      "mx-auto mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold",
+                      isToday ? "bg-primary text-primary-foreground" : "text-foreground"
                     )}>
                       {day.getDate()}
+                    </p>
+                    {/* nb actifs ce jour */}
+                    <p className={cn("mt-0.5 text-[10px] font-medium",
+                      isToday ? "text-primary" : "text-muted-foreground"
+                    )}>
+                      {dayTotals[i]}/{employees.length}
                     </p>
                   </th>
                 );
               })}
-              <th className="text-muted-foreground w-12 px-2 py-3 text-center text-xs font-medium tracking-wide uppercase md:w-14">
+
+              {/* Colonne total */}
+              <th className="text-muted-foreground w-12 px-2 py-2 text-center text-[10px] font-medium tracking-wide uppercase">
                 Total
               </th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="divide-border divide-y">
             {employees.map((employee, rowIdx) => {
               const empShifts = shifts.filter((s) => s.employeeId === employee.id);
-              const totalH = empShifts.reduce((sum, s) => sum + shiftHours(s), 0);
-              const roleCfg = ROLE_CONFIG[employee.role];
+              const totalH    = empShifts.reduce((sum, s) => sum + shiftDuration(s), 0);
 
               return (
                 <tr
                   key={employee.id}
                   className={cn(
-                    "border-border hover:bg-muted/10 border-b transition-colors last:border-0",
-                    rowIdx % 2 === 1 && "bg-muted/5"
+                    "hover:bg-muted/10 group transition-colors",
+                    rowIdx % 2 === 1 && "bg-muted/[0.03]"
                   )}
                 >
-                  <td className="px-4 py-2.5 md:px-5 md:py-3">
-                    <p className="text-sm font-medium">{employee.name}</p>
-                    <Badge variant="outline" className={cn("mt-0.5 text-[10px]", roleCfg.className)}>
-                      {roleCfg.label}
-                    </Badge>
+                  {/* Employé — colonne sticky */}
+                  <td className={cn(
+                    "border-border sticky left-0 z-10 w-44 border-r px-4 py-2.5 md:w-52",
+                    rowIdx % 2 === 1 ? "bg-muted/[0.03]" : "bg-background",
+                    "group-hover:bg-muted/10 transition-colors"
+                  )}>
+                    <p className="truncate text-sm font-semibold">{employee.name}</p>
+                    <span className={cn(
+                      "mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
+                      ROLE_COLORS[employee.role]
+                    )}>
+                      {employee.role.replace("_", " ")}
+                    </span>
                   </td>
 
+                  {/* Cellules jours */}
                   {weekDays.map((day, i) => {
-                    const dateStr = toYMD(day);
-                    const shift = empShifts.find((s) => s.date === dateStr);
-                    const cfg = shift ? SHIFT_CONFIG[shift.type] : null;
+                    const dateStr  = toYMD(day);
+                    const shift    = empShifts.find((s) => s.date === dateStr);
+                    const cfg      = shift ? SHIFT_CONFIG[shift.type] : null;
                     const isWeekend = i >= 5;
+                    const isToday   = dateStr === todayYMD;
 
                     return (
-                      <td key={i} className={cn("px-1.5 py-2 md:px-2", isWeekend && "bg-muted/10")}>
+                      <td
+                        key={i}
+                        className={cn(
+                          "px-1.5 py-1.5",
+                          isWeekend && "bg-muted/[0.06]",
+                          isToday && "bg-primary/[0.03]"
+                        )}
+                      >
                         {shift && shift.type !== "repos" ? (
                           <button
                             type="button"
                             onClick={() => setModal({ employeeId: employee.id, date: dateStr })}
                             className={cn(
-                              "w-full rounded-lg border px-1.5 py-2 text-center transition-all hover:opacity-80 hover:shadow-sm",
+                              "w-full rounded-lg border px-2 py-2 text-left transition-all",
+                              "hover:opacity-90 hover:shadow-sm active:scale-[0.98]",
                               cfg?.className
                             )}
                           >
-                            <p className="text-[11px] font-semibold">{cfg?.label}</p>
-                            <p className="text-[10px] opacity-70">
+                            <p className="text-[11px] font-bold">{cfg?.label}</p>
+                            <p className="text-[10px] font-medium opacity-70">
                               {shift.start}–{shift.end}
                             </p>
                           </button>
@@ -479,23 +341,24 @@ export function PlanningView() {
                           <button
                             type="button"
                             onClick={() => setModal({ employeeId: employee.id, date: dateStr })}
-                            className="text-muted-foreground hover:text-foreground w-full py-2 text-center text-xs transition-colors"
+                            className="text-muted-foreground/60 hover:text-muted-foreground w-full py-2 text-center text-xs transition-colors"
                           >
-                            Repos
+                            —
                           </button>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => !locked && setModal({ employeeId: employee.id, date: dateStr })}
+                            disabled={locked}
+                            onClick={() => setModal({ employeeId: employee.id, date: dateStr })}
                             className={cn(
-                              "group flex w-full items-center justify-center rounded-lg py-4 transition-all",
+                              "group/cell flex w-full items-center justify-center rounded-lg py-[18px] transition-all",
                               locked
                                 ? "cursor-not-allowed"
-                                : "hover:bg-primary/5 hover:border-primary/30 border border-dashed border-transparent"
+                                : "border border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5"
                             )}
                           >
                             {!locked && (
-                              <Plus className="text-muted-foreground/40 group-hover:text-primary h-3.5 w-3.5 transition-colors" />
+                              <Plus className="text-muted-foreground/30 group-hover/cell:text-primary/50 h-3.5 w-3.5 transition-colors" />
                             )}
                           </button>
                         )}
@@ -503,8 +366,12 @@ export function PlanningView() {
                     );
                   })}
 
-                  <td className="px-2 py-2.5 text-center md:px-3">
-                    <span className={cn("text-sm font-semibold", totalH > 35 ? "text-amber-600" : "text-foreground")}>
+                  {/* Total heures */}
+                  <td className="px-2 py-2 text-center">
+                    <span className={cn(
+                      "text-xs font-bold",
+                      totalH > 35 ? "text-amber-500" : totalH === 0 ? "text-muted-foreground/40" : "text-foreground"
+                    )}>
                       {totalH > 0 ? `${totalH}h` : "—"}
                     </span>
                   </td>
@@ -512,42 +379,48 @@ export function PlanningView() {
               );
             })}
           </tbody>
+
+          {/* Ligne totaux en bas */}
+          <tfoot className="sticky bottom-0 z-20">
+            <tr className="border-border bg-muted/40 border-t">
+              <td className="border-border sticky left-0 z-30 border-r bg-muted/40 px-4 py-2">
+                <span className="text-muted-foreground text-xs font-semibold">Total actifs</span>
+              </td>
+              {weekDays.map((day, i) => {
+                const isWeekend = i >= 5;
+                return (
+                  <td key={i} className={cn("py-2 text-center", isWeekend && "bg-muted/30")}>
+                    <span className="text-sm font-bold">{dayTotals[i]}</span>
+                  </td>
+                );
+              })}
+              <td className="py-2 text-center">
+                <span className="text-muted-foreground text-xs">
+                  {Math.round(shifts.reduce((a, s) => a + shiftDuration(s), 0))}h
+                </span>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 
-      {/* Légende */}
-      <div className="border-border flex flex-wrap items-center gap-3 border-t px-4 py-3 md:gap-4 md:px-6">
-        <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Légende</span>
-        {(Object.entries(SHIFT_CONFIG) as [ShiftType, ShiftConfig][]).map(([type, cfg]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div className={cn("h-3 w-3 rounded-sm border", cfg.className)} />
-            <span className="text-muted-foreground text-xs">{cfg.label}</span>
+      {/* ── Légende ──────────────────────────────────────────────────────── */}
+      <div className="border-border flex flex-wrap items-center gap-3 border-t px-4 py-2">
+        {(Object.entries(SHIFT_CONFIG) as [ShiftType, typeof SHIFT_CONFIG[ShiftType]][]).map(([type, cfg]) => (
+          <div key={type} className="flex items-center gap-1">
+            <span className={cn("h-2 w-2 rounded-sm border", cfg.className)} />
+            <span className="text-muted-foreground text-[10px]">{cfg.label}</span>
           </div>
         ))}
-        <span className="text-muted-foreground ml-auto hidden text-xs md:block">
-          Cliquez sur une cellule pour modifier
+        <span className="text-muted-foreground ml-auto hidden text-[10px] md:block">
+          Tapez une cellule pour ajouter ou modifier un shift
         </span>
       </div>
-    </div>
-  );
 
-  return (
-    <div className="flex flex-col">
-      {StatusBar}
-      {ConflictBar}
-
-      {/* Vue jour sur mobile (défaut), semaine si toggle */}
-      <div className="md:hidden">
-        {viewMode === "day" ? DayView : WeekView}
-      </div>
-
-      {/* Toujours vue semaine sur desktop */}
-      <div className="hidden md:block">{WeekView}</div>
-
-      {/* Modal shift */}
+      {/* ── Modal ────────────────────────────────────────────────────────── */}
       {modal && modalEmployee && (
         <ShiftModal
-          open={!!modal}
+          open
           onClose={() => setModal(null)}
           onSave={saveShift}
           onDelete={deleteShift}

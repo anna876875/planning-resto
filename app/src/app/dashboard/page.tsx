@@ -304,83 +304,131 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* Défilement horizontal sur mobile, grille 7 col sur desktop */}
-          <div className="-mx-4 md:mx-0">
-            <div className="flex gap-2 overflow-x-auto px-4 pb-2 md:grid md:grid-cols-7 md:overflow-x-visible md:px-0 md:pb-0">
-              {weekDays.map((day) => (
-                <Link
-                  key={day.dateYMD}
-                  href="/dashboard/plannings/actif"
-                  className={cn(
-                    "w-32 shrink-0 overflow-hidden rounded-xl border transition-all hover:shadow-md md:w-auto",
-                    day.isToday
-                      ? "border-primary ring-primary ring-2"
-                      : "border-border hover:border-primary/40",
-                    day.isWeekend && !day.isToday && "bg-muted/20"
-                  )}
-                >
-                  {/* En-tête jour */}
-                  <div
-                    className={cn(
-                      "flex items-center justify-between px-3 py-2",
-                      day.isToday ? "bg-primary text-primary-foreground" : "bg-muted/30"
-                    )}
-                  >
-                    <span className="text-xs font-semibold">{day.label}</span>
-                    <span
-                      className={cn(
-                        "text-xs font-bold",
-                        day.isToday ? "text-primary-foreground" : "text-foreground"
-                      )}
-                    >
-                      {day.date}
-                    </span>
-                  </div>
+          {/* Tableau jours en colonnes — scroll horizontal sur mobile */}
+          <div className="-mx-4 overflow-x-auto md:mx-0">
+            <div className="min-w-[480px] px-4 md:px-0">
+              <table className="w-full border-collapse overflow-hidden rounded-xl border">
+                {/* En-tête : jours */}
+                <thead>
+                  <tr className="border-border bg-muted/50 border-b">
+                    <th className="text-muted-foreground w-24 px-3 py-2.5 text-left text-[10px] font-semibold tracking-widest uppercase">
+                      Semaine
+                    </th>
+                    {weekDays.map((day) => (
+                      <th
+                        key={day.dateYMD}
+                        className={cn(
+                          "px-2 py-2 text-center",
+                          day.isToday && "bg-primary/10",
+                          day.isWeekend && !day.isToday && "bg-muted/30"
+                        )}
+                      >
+                        <p className={cn(
+                          "text-[10px] font-bold tracking-widest uppercase",
+                          day.isToday ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {day.label}
+                        </p>
+                        <p className={cn(
+                          "mx-auto mt-0.5 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold",
+                          day.isToday ? "bg-primary text-primary-foreground" : "text-foreground"
+                        )}>
+                          {day.date}
+                        </p>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-                  {/* Corps */}
-                  <div className="p-2.5">
-                    {day.services.length === 0 ? (
-                      <p className="text-muted-foreground py-2 text-center text-xs">Fermé</p>
-                    ) : (
-                      <>
-                        {/* Nombre de services + total employés */}
-                        <div className="mb-2 flex items-end justify-between">
-                          <div>
-                            <p className="text-2xl font-bold leading-none">{day.services.length}</p>
-                            <p className="text-muted-foreground text-[10px]">
-                              {day.services.length === 1 ? "service" : "services"}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold leading-none">{day.totalWorking}</p>
-                            <p className="text-muted-foreground text-[10px]">emp.</p>
-                          </div>
-                        </div>
+                <tbody className="divide-border divide-y">
+                  {/* Ligne : nb de services */}
+                  <tr className="hover:bg-muted/10">
+                    <td className="text-muted-foreground px-3 py-2.5 text-xs font-semibold">
+                      Services
+                    </td>
+                    {weekDays.map((day) => (
+                      <td
+                        key={day.dateYMD}
+                        className={cn(
+                          "px-2 py-2.5 text-center",
+                          day.isToday && "bg-primary/5",
+                          day.isWeekend && !day.isToday && "bg-muted/20"
+                        )}
+                      >
+                        {day.services.length > 0 ? (
+                          <span className="text-lg font-bold leading-none">{day.services.length}</span>
+                        ) : (
+                          <span className="text-muted-foreground/40 text-sm">—</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
 
-                        {/* Détail par service */}
-                        <div className="space-y-1">
-                          {day.services.map((svc) => (
-                            <div key={svc.type} className="flex items-center justify-between gap-1">
-                              <div className="flex items-center gap-1">
-                                <span className={cn("h-1.5 w-1.5 rounded-full", svc.dot)} />
-                                <span className="text-[10px] font-medium">{svc.label}</span>
-                              </div>
-                              <span
-                                className={cn(
-                                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                  {/* Une ligne par type de service */}
+                  {SERVICE_CONFIG.map((svc) => {
+                    const hasAny = weekDays.some((d) => d.services.some((s) => s.type === svc.type));
+                    if (!hasAny) return null;
+                    return (
+                      <tr key={svc.type} className="hover:bg-muted/10">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn("h-2 w-2 rounded-full", svc.dot)} />
+                            <span className="text-xs font-medium">{svc.label}</span>
+                          </div>
+                        </td>
+                        {weekDays.map((day) => {
+                          const found = day.services.find((s) => s.type === svc.type);
+                          return (
+                            <td
+                              key={day.dateYMD}
+                              className={cn(
+                                "px-2 py-2 text-center",
+                                day.isToday && "bg-primary/5",
+                                day.isWeekend && !day.isToday && "bg-muted/20"
+                              )}
+                            >
+                              {found ? (
+                                <span className={cn(
+                                  "inline-block rounded-full px-2 py-0.5 text-xs font-bold",
                                   svc.pill
-                                )}
-                              >
-                                {svc.count}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </Link>
-              ))}
+                                )}>
+                                  {found.count}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/30 text-xs">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+
+                  {/* Ligne : total employés actifs */}
+                  <tr className="bg-muted/20 hover:bg-muted/30">
+                    <td className="text-muted-foreground px-3 py-2 text-xs font-semibold">
+                      Actifs
+                    </td>
+                    {weekDays.map((day) => (
+                      <td
+                        key={day.dateYMD}
+                        className={cn(
+                          "px-2 py-2 text-center",
+                          day.isToday && "bg-primary/5",
+                          day.isWeekend && !day.isToday && "bg-muted/20"
+                        )}
+                      >
+                        <span className={cn(
+                          "text-sm font-bold",
+                          day.totalWorking === 0 ? "text-muted-foreground/30" : "text-foreground"
+                        )}>
+                          {day.totalWorking > 0 ? day.totalWorking : "—"}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
