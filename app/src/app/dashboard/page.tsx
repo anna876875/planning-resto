@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 import {
   Plus,
   CalendarDays,
@@ -69,9 +70,25 @@ function handleShare(planning: PlanningRecord) {
 }
 
 export default function DashboardPage() {
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [newPlanningOpen, setNewPlanningOpen] = useState(false);
   const actif = mockPlannings.find((p) => p.statut === "actif");
   const archives = mockPlannings.filter((p) => p.statut !== "actif");
+
+  useEffect(() => {
+    setOnboardingDone(localStorage.getItem("onboarding_done") === "true");
+  }, []);
+
+  function completeOnboarding() {
+    localStorage.setItem("onboarding_done", "true");
+    setOnboardingDone(true);
+  }
+
+  if (onboardingDone === null) return null; // évite le flash
+
+  if (!onboardingDone) {
+    return <OnboardingWizard onComplete={completeOnboarding} />;
+  }
 
   return (
     <>
