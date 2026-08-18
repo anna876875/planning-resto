@@ -223,23 +223,54 @@ function DetailPanel({ emp, onClose, onSave }: {
                   )}
                 </div>
 
-                {/* Heures + CTA */}
-                <div className="flex items-end justify-between">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
-                    <span className="text-muted-foreground text-sm">h réalisées</span>
-                    {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
-                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
-                        emp.heuresReelles > emp.heuresHebdo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-600"
-                      )}>
-                        {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h
-                      </span>
-                    )}
-                  </div>
-                  <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
-                    Voir toutes les heures →
-                  </button>
+                {/* Heures */}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
+                  <span className="text-muted-foreground text-sm">h réalisées</span>
+                  {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
+                      emp.heuresReelles > emp.heuresHebdo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-600"
+                    )}>
+                      {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h
+                    </span>
+                  )}
                 </div>
+
+                {/* Aperçu jours travaillés */}
+                {emp.joursTravail.length > 0 && (
+                  <div className="border-border overflow-hidden rounded-md border">
+                    <table className="w-full border-collapse text-xs">
+                      <tbody className="divide-border divide-y">
+                        {emp.joursTravail.map(jour => {
+                          const sKey = emp.services[0] ?? "matin";
+                          const h = SERVICE_HORAIRES[sKey];
+                          return (
+                            <tr key={jour}>
+                              <td className="w-10 py-1.5 pl-3 font-semibold">{jour}</td>
+                              <td className="px-2 py-1.5">
+                                {h && (
+                                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                                    sKey === "matin"   && "bg-blue-50   text-blue-700",
+                                    sKey === "soir"    && "bg-violet-50 text-violet-700",
+                                    sKey === "coupure" && "bg-teal-50   text-teal-700",
+                                  )}>{h.label}</span>
+                                )}
+                              </td>
+                              <td className="py-1.5 pr-3 text-right text-muted-foreground">
+                                {h ? <>{h.debut} – {h.fin} <span className="font-semibold text-foreground">· {h.duree}</span></> : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* CTA */}
+                <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
+                  Voir toutes les heures →
+                </button>
 
                 {/* Alertes */}
                 {(emp.alertes?.length ?? 0) > 0 && (
