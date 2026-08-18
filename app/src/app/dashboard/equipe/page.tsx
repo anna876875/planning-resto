@@ -111,6 +111,35 @@ function Input({ value, onChange, type = "text", placeholder }: {
   );
 }
 
+// ─── Indicateurs planning ─────────────────────────────────────────────────────
+
+const SEMAINE = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
+
+function maxReposConsecutifs(joursTravail: string[]): number {
+  const repos = SEMAINE.map(j => !joursTravail.includes(j));
+  const doubled = [...repos, ...repos];
+  let max = 0, curr = 0;
+  for (const r of doubled) {
+    if (r) { curr++; max = Math.max(max, curr); }
+    else curr = 0;
+  }
+  return Math.min(max, repos.filter(Boolean).length);
+}
+
+function weekendsReposCeMois(joursTravail: string[]): number {
+  if (joursTravail.includes("Sam") || joursTravail.includes("Dim")) return 0;
+  const now = new Date();
+  const debut = new Date(now.getFullYear(), now.getMonth(), 1);
+  const fin   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  let count = 0;
+  const d = new Date(debut);
+  while (d <= fin) {
+    if (d.getDay() === 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
 // ─── Panel détail ─────────────────────────────────────────────────────────────
 
 type Draft = Pick<EmployeDetail, "email" | "telephone" | "indisponibilites">;
@@ -266,6 +295,42 @@ function DetailPanel({ emp, onClose, onSave }: {
                     </table>
                   </div>
                 )}
+
+                {/* Indicateurs du mois */}
+                {emp.joursTravail.length > 0 && (() => {
+                  const reposMax    = maxReposConsecutifs(emp.joursTravail);
+                  const wkRepos     = weekendsReposCeMois(emp.joursTravail);
+                  const lowRepos    = reposMax <= 2;
+                  const noWeekend   = wkRepos === 0;
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className={cn("rounded-md border px-3 py-2.5", noWeekend ? "border-amber-200 bg-amber-50/60" : "border-border")}>
+                        <div className="flex items-center gap-1.5">
+                          <CalendarOff className={cn("h-3 w-3", noWeekend ? "text-amber-500" : "text-muted-foreground")} />
+                          <p className={cn("text-[10px] font-semibold uppercase tracking-widest", noWeekend ? "text-amber-600" : "text-muted-foreground")}>
+                            Weekends repos
+                          </p>
+                        </div>
+                        <p className={cn("mt-1 text-xl font-bold", noWeekend && "text-amber-700")}>{wkRepos}</p>
+                        <p className={cn("text-[10px]", noWeekend ? "text-amber-600" : "text-muted-foreground")}>
+                          {noWeekend ? "aucun ce mois-ci" : `ce mois-ci`}
+                        </p>
+                      </div>
+                      <div className={cn("rounded-md border px-3 py-2.5", lowRepos ? "border-amber-200 bg-amber-50/60" : "border-border")}>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className={cn("h-3 w-3", lowRepos ? "text-amber-500" : "text-muted-foreground")} />
+                          <p className={cn("text-[10px] font-semibold uppercase tracking-widest", lowRepos ? "text-amber-600" : "text-muted-foreground")}>
+                            Repos consécutifs
+                          </p>
+                        </div>
+                        <p className={cn("mt-1 text-xl font-bold", lowRepos && "text-amber-700")}>{reposMax}</p>
+                        <p className={cn("text-[10px]", lowRepos ? "text-amber-600" : "text-muted-foreground")}>
+                          {lowRepos ? `seulement ${reposMax}j max` : `jours max`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* CTA */}
                 <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
