@@ -785,9 +785,12 @@ function AjouterEmployeModal({ onClose, onAdd }: {
               {/* Indisponibilités récurrentes */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Indisponibilités</p>
+                  <div>
+                    <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Indisponibilités récurrentes</p>
+                    <p className="text-muted-foreground mt-0.5 text-[10px]">Les indispos ponctuelles se déclarent depuis la fiche employé.</p>
+                  </div>
                   {!addingIndispo && (
-                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setAddingIndispo(true)}>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs shrink-0" onClick={() => setAddingIndispo(true)}>
                       <Plus className="h-3 w-3" /> Ajouter
                     </Button>
                   )}
