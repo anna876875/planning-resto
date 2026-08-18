@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { equipe, type ContratType, type StatutEmploye, type AlerteType, type EmployeDetail } from "@/lib/planning/mock-equipe";
+import { equipe, type ContratType, type StatutEmploye, type AlerteType, type EmployeDetail, type IndispoHebdo } from "@/lib/planning/mock-equipe";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -284,6 +284,25 @@ function DetailPanel({ emp, onClose, onSave }: {
                   )}
                 </div>
 
+                {/* Récurrentes hebdomadaires (lecture seule) */}
+                {(emp.indisposHebdo?.length ?? 0) > 0 && (
+                  <div className="mb-3 space-y-1.5">
+                    <p className="text-muted-foreground text-[10px] font-medium">Récurrentes</p>
+                    {emp.indisposHebdo!.map((ind, i) => (
+                      <div key={`h${i}`} className="border-border flex items-start gap-2.5 rounded-md border px-3 py-2">
+                        <Repeat2 className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold">
+                            {ind.jours.join(", ")}
+                            {ind.heureDebut && ind.heureFin && ` · ${ind.heureDebut} – ${ind.heureFin}`}
+                          </p>
+                          {ind.motif && <p className="text-muted-foreground text-[11px]">{ind.motif}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Liste */}
                 <div className="space-y-1.5">
                   {(editing ? draft.indisponibilites : emp.indisponibilites)?.map((ind, i) => (
@@ -302,7 +321,7 @@ function DetailPanel({ emp, onClose, onSave }: {
                       )}
                     </div>
                   ))}
-                  {!editing && !emp.indisponibilites?.length && (
+                  {!editing && !emp.indisponibilites?.length && !emp.indisposHebdo?.length && (
                     <p className="text-muted-foreground text-xs">Aucune.</p>
                   )}
                   {editing && !draft.indisponibilites?.length && !addingIndispo && (
@@ -367,24 +386,23 @@ const POSTES_SUGGESTIONS = [
 
 const JOURS_OPTIONS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
-const SERVICES_OPTIONS = [
-  { key: "matin",   label: "Matin",   desc: "07h – 15h" },
-  { key: "coupure", label: "Coupure", desc: "10h – 23h" },
-  { key: "soir",    label: "Soir",    desc: "15h – 23h" },
-] as const;
+type IndispoFormEntry = { jours: string[]; heureDebut: string; heureFin: string; motif: string };
+const EMPTY_INDISPO_FORM: IndispoFormEntry = { jours: [], heureDebut: "", heureFin: "", motif: "" };
 
 type EmpForm = {
   nom: string; poste: string; email: string; telephone: string;
   contrat: ContratType; heuresHebdo: number;
   dateDebut: string; dateFinCDD: string;
-  joursTravail: string[]; services: string[]; note: string;
+  note: string;
+  indisposHebdo: IndispoFormEntry[];
 };
 
 const EMPTY_EMP: EmpForm = {
   nom: "", poste: "", email: "", telephone: "",
   contrat: "CDI", heuresHebdo: 35,
   dateDebut: "", dateFinCDD: "",
-  joursTravail: [], services: [], note: "",
+  note: "",
+  indisposHebdo: [],
 };
 
 function AjouterEmployeModal({ onClose, onAdd }: {
@@ -396,16 +414,24 @@ function AjouterEmployeModal({ onClose, onAdd }: {
   const [preview, setPreview]       = useState<string | null>(null);
   const [analyzing, setAnalyzing]   = useState(false);
   const [scanError, setScanError]   = useState<string | null>(null);
+  const [addingIndispo, setAddingIndispo] = useState(false);
+  const [newIndispo, setNewIndispo]       = useState<IndispoFormEntry>(EMPTY_INDISPO_FORM);
   const fileRef                     = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof EmpForm>(k: K, v: EmpForm[K]) {
     setForm(f => ({ ...f, [k]: v }));
   }
-  function toggle(key: "joursTravail" | "services", val: string) {
-    setForm(f => {
-      const arr = f[key] as string[];
-      return { ...f, [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] };
-    });
+  function toggleIndispoJour(jour: string) {
+    setNewIndispo(n => ({
+      ...n,
+      jours: n.jours.includes(jour) ? n.jours.filter(j => j !== jour) : [...n.jours, jour],
+    }));
+  }
+  function confirmIndispo() {
+    if (newIndispo.jours.length === 0) return;
+    setForm(f => ({ ...f, indisposHebdo: [...f.indisposHebdo, { ...newIndispo }] }));
+    setNewIndispo(EMPTY_INDISPO_FORM);
+    setAddingIndispo(false);
   }
 
   async function processFile(file: File) {
@@ -461,10 +487,18 @@ function AjouterEmployeModal({ onClose, onAdd }: {
       heuresHebdo: form.heuresHebdo,
       dateDebut: form.dateDebut || new Date().toISOString().split("T")[0],
       dateFinCDD: form.contrat === "CDD" && form.dateFinCDD ? form.dateFinCDD : undefined,
-      joursTravail: form.joursTravail as EmployeDetail["joursTravail"],
-      services: form.services as EmployeDetail["services"],
+      joursTravail: [],
+      services: [],
       statut: "actif",
       note: form.note.trim() || undefined,
+      indisposHebdo: form.indisposHebdo.length > 0
+        ? form.indisposHebdo.map(i => ({
+            jours: i.jours as IndispoHebdo["jours"],
+            heureDebut: i.heureDebut || undefined,
+            heureFin: i.heureFin || undefined,
+            motif: i.motif || undefined,
+          }))
+        : undefined,
     });
     onClose();
   }
@@ -652,47 +686,83 @@ function AjouterEmployeModal({ onClose, onAdd }: {
                 </div>
               </div>
 
-              {/* Planning */}
+              {/* Indisponibilités récurrentes */}
               <div className="space-y-3">
-                <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Planning</p>
-                <Field label="Jours travaillés">
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {JOURS_OPTIONS.map(j => (
-                      <button
-                        key={j}
-                        type="button"
-                        onClick={() => toggle("joursTravail", j)}
-                        className={cn(
-                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                          form.joursTravail.includes(j)
-                            ? "bg-primary text-primary-foreground"
-                            : "border-border border text-muted-foreground hover:border-primary/50"
-                        )}
-                      >
-                        {j}
-                      </button>
-                    ))}
+                <div className="flex items-center justify-between">
+                  <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Indisponibilités</p>
+                  {!addingIndispo && (
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setAddingIndispo(true)}>
+                      <Plus className="h-3 w-3" /> Ajouter
+                    </Button>
+                  )}
+                </div>
+
+                {form.indisposHebdo.length === 0 && !addingIndispo && (
+                  <p className="text-muted-foreground text-xs">Aucune pour l'instant.</p>
+                )}
+
+                {form.indisposHebdo.map((ind, i) => (
+                  <div key={i} className="border-border flex items-start gap-2.5 rounded-md border px-3 py-2">
+                    <Repeat2 className="text-muted-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold">
+                        {ind.jours.join(", ")}
+                        {ind.heureDebut && ind.heureFin && ` · ${ind.heureDebut} – ${ind.heureFin}`}
+                      </p>
+                      {ind.motif && <p className="text-muted-foreground text-[11px]">{ind.motif}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, indisposHebdo: f.indisposHebdo.filter((_, idx) => idx !== i) }))}
+                      className="text-muted-foreground hover:text-red-500 mt-0.5 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                </Field>
-                <Field label="Services">
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {SERVICES_OPTIONS.map(s => (
-                      <button
-                        key={s.key}
-                        type="button"
-                        onClick={() => toggle("services", s.key)}
-                        className={cn(
-                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                          form.services.includes(s.key)
-                            ? "bg-primary text-primary-foreground"
-                            : "border-border border text-muted-foreground hover:border-primary/50"
-                        )}
-                      >
-                        {s.label} <span className="opacity-50">{s.desc}</span>
-                      </button>
-                    ))}
+                ))}
+
+                {addingIndispo && (
+                  <div className="border-border space-y-3 rounded-md border bg-muted/20 p-3">
+                    <Field label="Jours d'absence">
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {JOURS_OPTIONS.map(j => (
+                          <button
+                            key={j}
+                            type="button"
+                            onClick={() => toggleIndispoJour(j)}
+                            className={cn(
+                              "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                              newIndispo.jours.includes(j)
+                                ? "bg-primary text-primary-foreground"
+                                : "border-border border text-muted-foreground hover:border-primary/50"
+                            )}
+                          >
+                            {j}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="De (optionnel)">
+                        <Input type="time" value={newIndispo.heureDebut} onChange={v => setNewIndispo(n => ({ ...n, heureDebut: v }))} />
+                      </Field>
+                      <Field label="À (optionnel)">
+                        <Input type="time" value={newIndispo.heureFin} onChange={v => setNewIndispo(n => ({ ...n, heureFin: v }))} />
+                      </Field>
+                    </div>
+                    <Field label="Motif (optionnel)">
+                      <Input value={newIndispo.motif} onChange={v => setNewIndispo(n => ({ ...n, motif: v }))} placeholder="Ex : cours, rendez-vous médical…" />
+                    </Field>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setAddingIndispo(false); setNewIndispo(EMPTY_INDISPO_FORM); }}>
+                        Annuler
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs" onClick={confirmIndispo} disabled={newIndispo.jours.length === 0}>
+                        Confirmer
+                      </Button>
+                    </div>
                   </div>
-                </Field>
+                )}
               </div>
 
               {/* Note */}

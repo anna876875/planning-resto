@@ -14,6 +14,13 @@ export interface Indisponibilite {
   motif?: string;
 }
 
+export interface IndispoHebdo {
+  jours: ("Lun" | "Mar" | "Mer" | "Jeu" | "Ven" | "Sam" | "Dim")[];
+  heureDebut?: string;
+  heureFin?: string;
+  motif?: string;
+}
+
 export interface EmployeDetail {
   id: string;
   nom: string;
@@ -31,6 +38,7 @@ export interface EmployeDetail {
   note?: string;
   alertes?: AlerteEmploye[];
   indisponibilites?: Indisponibilite[];
+  indisposHebdo?: IndispoHebdo[];
 }
 
 export const equipe: EmployeDetail[] = [

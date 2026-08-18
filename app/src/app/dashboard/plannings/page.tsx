@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, CalendarDays, ChevronRight, Plus, X, NotebookPen, CheckCircle2 } from "lucide-react";
+import { Clock, Users, CalendarDays, ChevronRight, Plus, X, NotebookPen, CheckCircle2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanningView } from "@/components/planning/PlanningView";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ function computeStats(dateDebut: string) {
 export default function PlanningsPage() {
   const [selected, setSelected]   = useState<PlanningRecord | null>(null);
   const [annotation, setAnnotation]   = useState<Record<string, string>>({});
+  const [dateFrom, setDateFrom]   = useState("");
+  const [dateTo, setDateTo]       = useState("");
   const [successCount, setSuccessCount] = useState(0);
   const [showSuccess, setShowSuccess]   = useState(false);
   const [successIn, setSuccessIn]       = useState(false);
@@ -61,9 +63,41 @@ export default function PlanningsPage() {
         </Button>
       </div>
 
+      {/* Filtre par date */}
+      <div className="flex items-center gap-2 border-border border-b px-4 pb-4 md:px-6">
+        <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+        <span className="text-muted-foreground text-xs shrink-0">Du</span>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          className="border-border bg-muted/30 focus:ring-primary/30 rounded-md border px-2.5 py-1.5 text-xs outline-none focus:ring-2"
+        />
+        <span className="text-muted-foreground text-xs shrink-0">au</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          className="border-border bg-muted/30 focus:ring-primary/30 rounded-md border px-2.5 py-1.5 text-xs outline-none focus:ring-2"
+        />
+        {(dateFrom || dateTo) && (
+          <button
+            type="button"
+            onClick={() => { setDateFrom(""); setDateTo(""); }}
+            className="text-muted-foreground hover:text-foreground ml-1 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* Liste */}
       <div className="divide-border divide-y">
-        {mockPlannings.map((planning) => {
+        {mockPlannings.filter(p => {
+          if (dateFrom && p.dateDebut < dateFrom) return false;
+          if (dateTo   && p.dateDebut > dateTo)   return false;
+          return true;
+        }).map((planning) => {
           const sc    = STATUS_CFG[planning.statut];
           const stats = computeStats(planning.dateDebut);
           return (
@@ -124,7 +158,7 @@ export default function PlanningsPage() {
             </div>
 
             {/* Planning */}
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-h-0 flex-1 flex-col overflow-auto px-4 pb-4 pt-3">
               <PlanningView key={selected.id} onPublished={handlePublished} />
             </div>
 
