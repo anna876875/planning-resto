@@ -200,11 +200,7 @@ export default function DashboardPage() {
   return (
     <>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="border-border bg-background sticky top-0 z-10 flex h-14 items-center justify-between border-b px-4 md:px-6">
-        <div>
-          <h1 className="text-sm font-semibold md:text-base">{greeting} !</h1>
-          <p className="text-muted-foreground hidden text-xs capitalize md:block">{dateLabel}</p>
-        </div>
+      <header className="border-border bg-background sticky top-0 z-10 flex h-14 items-center justify-end border-b px-4 md:px-6">
         <Button size="sm" onClick={() => setNewPlanningOpen(true)}>
           <Plus className="mr-1.5 h-4 w-4" />
           <span className="hidden sm:inline">Nouveau planning</span>
@@ -213,6 +209,10 @@ export default function DashboardPage() {
       </header>
 
       <div className="space-y-6 p-4 md:space-y-10 md:p-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{greeting} !</h1>
+          <p className="text-muted-foreground text-sm capitalize">{dateLabel}</p>
+        </div>
 
         {/* ── Aujourd'hui (mobile uniquement) ──────────────────────────────── */}
         <section className="md:hidden">

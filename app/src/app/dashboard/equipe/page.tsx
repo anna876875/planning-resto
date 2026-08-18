@@ -169,7 +169,7 @@ function DetailPanel({ emp, onClose, onSave }: {
         )}
       />
       <div
-        className="fixed top-0 right-0 z-50 flex h-full w-[min(420px,100vw)] flex-col bg-background shadow-2xl transition-transform duration-300 ease-in-out"
+        className="fixed top-0 right-0 z-50 flex h-full w-[min(560px,100vw)] flex-col bg-background shadow-2xl transition-transform duration-300 ease-in-out"
         style={{ transform: open ? "translateX(0)" : "translateX(100%)" }}
       >
         {emp && (
@@ -985,8 +985,7 @@ export default function EquipePage() {
     <>
       <div className="flex flex-col">
         {/* Header */}
-        <div className="border-border bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b px-4 md:px-6">
-          <h1 className="text-base font-semibold">Équipe</h1>
+        <div className="border-border bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center justify-end border-b px-4 md:px-6">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEquipesOpen(true)}>
               <UsersRound className="h-3.5 w-3.5" />
@@ -1000,6 +999,7 @@ export default function EquipePage() {
         </div>
 
         <div className="space-y-4 p-4 md:p-6">
+          <h1 className="text-2xl font-bold tracking-tight">Équipe</h1>
 
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

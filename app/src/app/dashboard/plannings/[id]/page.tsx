@@ -32,18 +32,12 @@ export default function PlanningDetailPage() {
     <div className="flex flex-col">
       {/* Sub-header avec actions */}
       <div className="border-border bg-background sticky top-0 z-20 flex h-14 items-center justify-between border-b px-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8" })}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <div>
-            <p className="text-sm font-semibold">{planning.nom}</p>
-            <p className="text-muted-foreground text-xs">{planning.semaine}</p>
-          </div>
-        </div>
+        <Link
+          href="/dashboard"
+          className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8" })}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
 
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -59,6 +53,12 @@ export default function PlanningDetailPage() {
             Partager
           </Button>
         </div>
+      </div>
+
+      {/* Titre */}
+      <div className="border-border border-b px-6 py-4">
+        <h1 className="text-2xl font-bold tracking-tight">{planning.nom}</h1>
+        <p className="text-muted-foreground text-sm">{planning.semaine}</p>
       </div>
 
       {/* Planning grid */}
