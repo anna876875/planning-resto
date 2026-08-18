@@ -30,35 +30,33 @@ export default function PlanningDetailPage() {
 
   return (
     <div className="flex flex-col">
-      {/* Sub-header avec actions */}
-      <div className="border-border bg-background sticky top-0 z-20 flex h-14 items-center justify-between border-b px-6">
+      {/* Retour */}
+      <div className="border-border bg-background sticky top-0 z-20 flex h-12 items-center border-b px-6">
         <Link
           href="/dashboard"
           className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8" })}
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="mr-1.5 h-3.5 w-3.5" />
-            Imprimer
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Télécharger
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleShare}>
-            <Share2 className="mr-1.5 h-3.5 w-3.5" />
-            Partager
-          </Button>
-        </div>
       </div>
 
-      {/* Titre */}
-      <div className="border-border border-b px-6 py-4">
-        <h1 className="text-2xl font-bold tracking-tight">{planning.nom}</h1>
-        <p className="text-muted-foreground text-sm">{planning.semaine}</p>
+      {/* Titre + actions */}
+      <div className="flex items-start justify-between border-b border-border px-6 py-5">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{planning.nom}</h1>
+          <p className="text-muted-foreground text-sm">{planning.semaine}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-1.5 h-3.5 w-3.5" /> Imprimer
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownload}>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Télécharger
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShare}>
+            <Share2 className="mr-1.5 h-3.5 w-3.5" /> Partager
+          </Button>
+        </div>
       </div>
 
       {/* Planning grid */}

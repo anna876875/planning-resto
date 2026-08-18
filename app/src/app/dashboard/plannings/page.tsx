@@ -53,16 +53,12 @@ export default function PlanningsPage() {
 
   return (
     <div className="flex flex-col">
-      {/* Header */}
-      <div className="border-border bg-background sticky top-0 z-10 flex h-14 items-center justify-end border-b px-4 md:px-6">
+      {/* Titre + action */}
+      <div className="flex items-center justify-between px-4 py-6 md:px-6">
+        <h1 className="text-2xl font-bold tracking-tight">Plannings</h1>
         <Button size="sm" className="h-8 gap-1.5">
           <Plus className="h-3.5 w-3.5" /> Nouveau
         </Button>
-      </div>
-
-      {/* Titre */}
-      <div className="px-4 pb-2 pt-6 md:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Plannings</h1>
       </div>
 
       {/* Liste */}

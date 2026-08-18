@@ -985,21 +985,20 @@ export default function EquipePage() {
     <>
       <div className="flex flex-col">
         {/* Header */}
-        <div className="border-border bg-background sticky top-0 z-10 flex h-14 shrink-0 items-center justify-end border-b px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEquipesOpen(true)}>
-              <UsersRound className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Définir des équipes</span>
-            </Button>
-            <Button size="sm" className="h-8 gap-1.5" onClick={() => setAjouterOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Ajouter un employé</span>
-            </Button>
-          </div>
-        </div>
-
         <div className="space-y-4 p-4 md:p-6">
-          <h1 className="text-2xl font-bold tracking-tight">Équipe</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">Équipe</h1>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEquipesOpen(true)}>
+                <UsersRound className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Définir des équipes</span>
+              </Button>
+              <Button size="sm" className="h-8 gap-1.5" onClick={() => setAjouterOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Ajouter un employé</span>
+              </Button>
+            </div>
+          </div>
 
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
