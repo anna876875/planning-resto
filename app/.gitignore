@@ -1,0 +1,28 @@
+# Dépendances
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Variables d'environnement — NE JAMAIS committer
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/

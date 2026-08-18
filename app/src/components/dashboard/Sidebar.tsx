@@ -13,6 +13,8 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+const ACCOUNT = { nom: "Anna Vignaud", role: "Gérante" };
+
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/plannings", label: "Plannings", icon: CalendarDays, exact: false },
@@ -75,12 +77,24 @@ export function Sidebar() {
         {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
       </button>
 
-      {/* Footer */}
-      {!collapsed && (
-        <div className="border-border border-t p-3">
-          <p className="text-muted-foreground text-xs">Planning Resto v0.1</p>
-        </div>
-      )}
+      {/* Compte connecté */}
+      <div className={cn("border-border border-t p-3", collapsed ? "flex justify-center" : "")}>
+        {collapsed ? (
+          <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold">
+            {ACCOUNT.nom.charAt(0)}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+              {ACCOUNT.nom.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold">{ACCOUNT.nom}</p>
+              <p className="text-muted-foreground text-[10px]">{ACCOUNT.role}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
