@@ -204,8 +204,9 @@ function DetailPanel({ emp, onClose, onSave }: {
 
             <div className="flex-1 divide-y divide-border overflow-y-auto">
 
-              {/* Statut + contrat + heures */}
-              <div className="space-y-3 px-4 py-4">
+              {/* Infos principales */}
+              <div className="space-y-4 px-4 py-4">
+                {/* Statut + contrat */}
                 <div className="flex flex-wrap gap-2">
                   {(() => { const s = STATUT_CFG[emp.statut]; return (
                     <span className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold", s.badge)}>
@@ -215,67 +216,37 @@ function DetailPanel({ emp, onClose, onSave }: {
                   {(() => { const c = CONTRAT_CFG[emp.contrat]; return (
                     <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", c.color)}>{c.label}</span>
                   ); })()}
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
-                  <span className="text-muted-foreground text-sm">h réalisées</span>
-                  {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
-                    <span className={cn("ml-1 rounded-full px-2 py-0.5 text-xs font-bold",
-                      emp.heuresReelles > emp.heuresHebdo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-600"
-                    )}>
-                      {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h / contrat {emp.heuresHebdo}h
+                  {emp.dateFinCDD && (
+                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      Fin {new Date(emp.dateFinCDD).toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })}
                     </span>
                   )}
                 </div>
-                {emp.dateFinCDD && (
-                  <p className="text-xs text-blue-700">Fin de contrat : <span className="font-semibold">{new Date(emp.dateFinCDD).toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })}</span></p>
-                )}
-                {emp.note && <p className="text-muted-foreground text-xs italic">{emp.note}</p>}
-              </div>
 
-              {/* Alertes */}
-              {(emp.alertes?.length ?? 0) > 0 && (
-                <div className="px-4 py-4">
-                  <p className="text-muted-foreground mb-2 text-[10px] font-semibold uppercase tracking-widest">Alertes</p>
-                  <AlertesBadges alertes={emp.alertes!} />
+                {/* Heures + CTA */}
+                <div className="flex items-end justify-between">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
+                    <span className="text-muted-foreground text-sm">h réalisées</span>
+                    {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
+                        emp.heuresReelles > emp.heuresHebdo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-600"
+                      )}>
+                        {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h
+                      </span>
+                    )}
+                  </div>
+                  <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
+                    Voir toutes les heures →
+                  </button>
                 </div>
-              )}
 
-              {/* Planning semaine */}
-              <div className="px-4 py-4">
-                <p className="text-muted-foreground mb-3 text-[10px] font-semibold uppercase tracking-widest">Semaine en cours</p>
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr className="border-border border-b">
-                      <th className="text-muted-foreground pb-1.5 text-left font-medium">Jour</th>
-                      <th className="text-muted-foreground pb-1.5 text-left font-medium">Service</th>
-                      <th className="text-muted-foreground pb-1.5 text-right font-medium">Horaires</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-border divide-y">
-                    {getSemaineEmployee(emp.joursTravail, emp.services).map(({ jour, date, travaille, horaire }) => (
-                      <tr key={jour} className={cn(!travaille && "opacity-35")}>
-                        <td className="py-2 font-medium">
-                          {jour} <span className="text-muted-foreground font-normal">{date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
-                        </td>
-                        <td className="py-2">
-                          {horaire ? (
-                            <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                              horaire.label === "Matin"   && "bg-blue-50   text-blue-700",
-                              horaire.label === "Soir"    && "bg-violet-50 text-violet-700",
-                              horaire.label === "Coupure" && "bg-teal-50   text-teal-700",
-                            )}>{horaire.label}</span>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="py-2 text-right">
-                          {horaire
-                            ? <span className="text-muted-foreground">{horaire.debut} – {horaire.fin} <span className="font-semibold text-foreground">· {horaire.duree}</span></span>
-                            : <span className="text-muted-foreground">—</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {/* Alertes */}
+                {(emp.alertes?.length ?? 0) > 0 && (
+                  <AlertesBadges alertes={emp.alertes!} />
+                )}
+
+                {emp.note && <p className="text-muted-foreground text-xs italic">{emp.note}</p>}
               </div>
 
               {/* Contact — lecture ou édition */}
@@ -823,17 +794,7 @@ function EquipesModal({ team, onClose }: { team: EmployeDetail[]; onClose: () =>
                       <p className="text-sm font-semibold">{g.nom}</p>
                       {g.saison && <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px]">{g.saison}</span>}
                     </div>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      {g.membreIds.slice(0, 5).map(id => {
-                        const emp = team.find(e => e.id === id);
-                        return emp ? (
-                          <div key={id} title={emp.nom} className={cn("flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold", avatarCls())}>
-                            {emp.nom.charAt(0)}
-                          </div>
-                        ) : null;
-                      })}
-                      <span className="text-muted-foreground text-xs">{g.membreIds.length} membre{g.membreIds.length > 1 ? "s" : ""}</span>
-                    </div>
+                    <p className="text-muted-foreground mt-0.5 text-xs">{g.membreIds.length} membre{g.membreIds.length > 1 ? "s" : ""}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(g)}>
