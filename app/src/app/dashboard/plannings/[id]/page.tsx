@@ -34,9 +34,9 @@ export default function PlanningDetailPage() {
       <div className="border-border bg-background sticky top-0 z-20 flex h-12 items-center border-b px-6">
         <Link
           href="/dashboard"
-          className={buttonVariants({ variant: "ghost", size: "icon", className: "h-8 w-8" })}
+          className={buttonVariants({ variant: "ghost", size: "sm", className: "h-8 gap-1.5" })}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" /> Retour
         </Link>
       </div>
 

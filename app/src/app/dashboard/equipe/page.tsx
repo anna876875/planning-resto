@@ -221,12 +221,12 @@ function DetailPanel({ emp, onClose, onSave }: {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(true)}>
-                    <Pencil className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
+                    <Pencil className="h-3.5 w-3.5" /> Modifier
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-                  <X className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onClose}>
+                  <X className="h-3.5 w-3.5" /> Fermer
                 </Button>
               </div>
             </div>
@@ -266,35 +266,57 @@ function DetailPanel({ emp, onClose, onSave }: {
                 </div>
 
                 {/* Aperçu jours travaillés */}
-                {emp.joursTravail.length > 0 && (
-                  <div className="border-border overflow-hidden rounded-md border">
-                    <table className="w-full border-collapse text-xs">
-                      <tbody className="divide-border divide-y">
-                        {emp.joursTravail.map(jour => {
-                          const sKey = emp.services[0] ?? "matin";
-                          const h = SERVICE_HORAIRES[sKey];
-                          return (
-                            <tr key={jour}>
-                              <td className="w-10 py-1.5 pl-3 font-semibold">{jour}</td>
-                              <td className="px-2 py-1.5">
-                                {h && (
-                                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                                    sKey === "matin"   && "bg-blue-50   text-blue-700",
-                                    sKey === "soir"    && "bg-violet-50 text-violet-700",
-                                    sKey === "coupure" && "bg-teal-50   text-teal-700",
-                                  )}>{h.label}</span>
-                                )}
-                              </td>
-                              <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                                {h ? <>{h.debut} – {h.fin} <span className="font-semibold text-foreground">· {h.duree}</span></> : "—"}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {emp.joursTravail.length > 0 && (() => {
+                  const lundi = getLundiSemaine();
+                  return (
+                    <div className="border-border overflow-hidden rounded-md border">
+                      <table className="w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-border border-b bg-muted/30">
+                            <th className="text-muted-foreground py-1.5 pl-3 text-left text-[10px] font-semibold uppercase tracking-widest">Jour</th>
+                            <th className="text-muted-foreground px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Service</th>
+                            <th className="text-muted-foreground py-1.5 pr-3 text-right text-[10px] font-semibold uppercase tracking-widest">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-border divide-y">
+                          {emp.joursTravail.map(jour => {
+                            const jourIdx = JOURS_FULL.indexOf(jour as typeof JOURS_FULL[number]);
+                            const date = new Date(lundi);
+                            date.setDate(lundi.getDate() + jourIdx);
+                            const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                            const sKey = emp.services[0] ?? "matin";
+                            const h = SERVICE_HORAIRES[sKey];
+                            return (
+                              <tr key={jour}>
+                                <td className="py-2 pl-3">
+                                  <p className="font-semibold">{jour}</p>
+                                  <p className="text-muted-foreground">{dateStr}</p>
+                                </td>
+                                <td className="px-2 py-2">
+                                  {h && (
+                                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                                      sKey === "matin"   && "bg-blue-50   text-blue-700",
+                                      sKey === "soir"    && "bg-violet-50 text-violet-700",
+                                      sKey === "coupure" && "bg-teal-50   text-teal-700",
+                                    )}>{h.label}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 pr-3 text-right">
+                                  {h ? (
+                                    <>
+                                      <p className="text-muted-foreground">{h.debut} – {h.fin}</p>
+                                      <p className="font-semibold">{h.duree}</p>
+                                    </>
+                                  ) : <span className="text-muted-foreground">—</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
 
                 {/* Indicateurs du mois */}
                 {emp.joursTravail.length > 0 && (() => {
@@ -411,8 +433,8 @@ function DetailPanel({ emp, onClose, onSave }: {
                         {ind.motif && <p className="text-muted-foreground text-[11px]">{ind.motif}</p>}
                       </div>
                       {editing && (
-                        <button type="button" onClick={() => removeIndispo(i)} className="text-muted-foreground hover:text-red-500 mt-0.5 transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />
+                        <button type="button" onClick={() => removeIndispo(i)} className="text-muted-foreground hover:text-red-500 flex shrink-0 items-center gap-1 text-[10px] transition-colors">
+                          <Trash2 className="h-3 w-3" /> Suppr.
                         </button>
                       )}
                     </div>
@@ -609,8 +631,8 @@ function AjouterEmployeModal({ onClose, onAdd }: {
         {/* Header */}
         <div className="border-border flex h-12 shrink-0 items-center justify-between border-b px-4">
           <h2 className="text-sm font-semibold">{STEP_TITLE[step]}</h2>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onClose}>
+            <X className="h-3.5 w-3.5" /> Fermer
           </Button>
         </div>
 
@@ -813,9 +835,9 @@ function AjouterEmployeModal({ onClose, onAdd }: {
                     <button
                       type="button"
                       onClick={() => setForm(f => ({ ...f, indisposHebdo: f.indisposHebdo.filter((_, idx) => idx !== i) }))}
-                      className="text-muted-foreground hover:text-red-500 mt-0.5 transition-colors"
+                      className="text-muted-foreground hover:text-red-500 flex shrink-0 items-center gap-1 text-[10px] transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" /> Suppr.
                     </button>
                   </div>
                 ))}
@@ -937,8 +959,8 @@ function EquipesModal({ team, onClose }: { team: EmployeDetail[]; onClose: () =>
             <UsersRound className="text-primary h-4 w-4" />
             <h2 className="text-sm font-semibold">Équipes</h2>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onClose}>
+            <X className="h-3.5 w-3.5" /> Fermer
           </Button>
         </div>
 
@@ -966,11 +988,11 @@ function EquipesModal({ team, onClose }: { team: EmployeDetail[]; onClose: () =>
                     <p className="text-muted-foreground mt-0.5 text-xs">{g.membreIds.length} membre{g.membreIds.length > 1 ? "s" : ""}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(g)}>
-                      <Pencil className="h-3 w-3" />
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => openEdit(g)}>
+                      <Pencil className="h-3 w-3" /> Modifier
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-500" onClick={() => deleteGroupe(g.id)}>
-                      <Trash2 className="h-3 w-3" />
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-muted-foreground hover:text-red-500" onClick={() => deleteGroupe(g.id)}>
+                      <Trash2 className="h-3 w-3" /> Supprimer
                     </Button>
                   </div>
                 </div>

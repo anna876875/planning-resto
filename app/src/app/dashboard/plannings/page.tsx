@@ -152,8 +152,8 @@ export default function PlanningsPage() {
                 <span className="text-sm font-semibold">{selected.nom}</span>
                 <span className="text-muted-foreground ml-2 text-xs">{selected.semaine}</span>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelected(null)}>
-                <X className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setSelected(null)}>
+                <X className="h-3.5 w-3.5" /> Fermer
               </Button>
             </div>
 
