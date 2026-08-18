@@ -137,7 +137,7 @@ function weekendsReposCeMois(joursTravail: string[]): number {
     if (d.getDay() === 6) count++;
     d.setDate(d.getDate() + 1);
   }
-  return count;
+  return Math.min(count, 4);
 }
 
 // ─── Panel détail ─────────────────────────────────────────────────────────────
@@ -275,9 +275,9 @@ function DetailPanel({ emp, onClose, onSave }: {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-border border-b">
-                          <th className="text-muted-foreground pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Jour</th>
-                          <th className="text-muted-foreground px-4 pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Service</th>
-                          <th className="text-muted-foreground pb-2 text-right text-[10px] font-semibold uppercase tracking-widest">Total</th>
+                          <th className="text-muted-foreground pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Jour travaillé</th>
+                          <th className="text-muted-foreground px-4 pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Type de service</th>
+                          <th className="text-muted-foreground pb-2 text-right text-[10px] font-semibold uppercase tracking-widest">Heure totale</th>
                         </tr>
                       </thead>
                       <tbody className="divide-border divide-y">

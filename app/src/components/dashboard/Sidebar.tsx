@@ -9,6 +9,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  History,
+  HelpCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,11 @@ const NAV_ITEMS = [
   { href: "/dashboard/plannings", label: "Plannings", icon: CalendarDays, exact: false },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users, exact: false },
   { href: "/dashboard/parametres", label: "Paramètres", icon: Settings, exact: false },
+];
+
+const NAV_BOTTOM = [
+  { href: "/dashboard/historique", label: "Historique", icon: History, exact: false },
+  { href: "/dashboard/assistance", label: "Assistance", icon: HelpCircle, exact: false },
 ];
 
 export function Sidebar() {
@@ -45,27 +52,54 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col gap-1 p-2">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? pathname === href : pathname.startsWith(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                collapsed && "justify-center px-0"
-              )}
-              title={collapsed ? label : undefined}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{label}</span>}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-1 flex-col p-2">
+        <div className="flex flex-col gap-1">
+          {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  collapsed && "justify-center px-0"
+                )}
+                title={collapsed ? label : undefined}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{label}</span>}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="flex-1" />
+
+        <div className="border-border flex flex-col gap-1 border-t pt-2">
+          {NAV_BOTTOM.map(({ href, label, icon: Icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  collapsed && "justify-center px-0"
+                )}
+                title={collapsed ? label : undefined}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{label}</span>}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Toggle collapse */}
