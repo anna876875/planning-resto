@@ -234,96 +234,100 @@ function DetailPanel({ emp, onClose, onSave }: {
             <div className="flex-1 divide-y divide-border overflow-y-auto">
 
               {/* Infos principales */}
-              <div className="space-y-4 px-4 py-4">
-                {/* Statut + contrat */}
-                <div className="flex flex-wrap gap-2">
-                  {(() => { const s = STATUT_CFG[emp.statut]; return (
-                    <span className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold", s.badge)}>
-                      <span className={cn("h-2 w-2 rounded-full", s.dot)} /> {s.label}
-                    </span>
-                  ); })()}
-                  {(() => { const c = CONTRAT_CFG[emp.contrat]; return (
-                    <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", c.color)}>{c.label}</span>
-                  ); })()}
-                  {emp.dateFinCDD && (
-                    <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                      Fin {new Date(emp.dateFinCDD).toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })}
-                    </span>
-                  )}
+              <div className="space-y-5 px-4 py-5">
+
+                {/* Heures (gauche) — Badges statut/contrat (droite) */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-4xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
+                    <span className="text-muted-foreground text-sm">h réalisées</span>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {(() => { const s = STATUT_CFG[emp.statut]; return (
+                      <span className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold", s.badge)}>
+                        <span className={cn("h-2 w-2 rounded-full", s.dot)} /> {s.label}
+                      </span>
+                    ); })()}
+                    {(() => { const c = CONTRAT_CFG[emp.contrat]; return (
+                      <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", c.color)}>{c.label}</span>
+                    ); })()}
+                    {emp.dateFinCDD && (
+                      <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        Fin {new Date(emp.dateFinCDD).toLocaleDateString("fr-FR", { day:"2-digit", month:"short", year:"numeric" })}
+                      </span>
+                    )}
+                    {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
+                      <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold",
+                        emp.heuresReelles > emp.heuresHebdo
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-600"
+                      )}>
+                        {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Heures */}
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-3xl font-bold">{emp.heuresReelles ?? emp.heuresHebdo}</span>
-                  <span className="text-muted-foreground text-sm">h réalisées</span>
-                  {emp.heuresReelles && emp.heuresReelles !== emp.heuresHebdo && (
-                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold",
-                      emp.heuresReelles > emp.heuresHebdo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-600"
-                    )}>
-                      {emp.heuresReelles > emp.heuresHebdo ? "+" : ""}{emp.heuresReelles - emp.heuresHebdo}h
-                    </span>
-                  )}
-                </div>
-
-                {/* Aperçu jours travaillés */}
+                {/* Tableau des jours — sans stroke, aéré */}
                 {emp.joursTravail.length > 0 && (() => {
                   const lundi = getLundiSemaine();
                   return (
-                    <div className="border-border overflow-hidden rounded-md border">
-                      <table className="w-full border-collapse text-xs">
-                        <thead>
-                          <tr className="border-border border-b bg-muted/30">
-                            <th className="text-muted-foreground py-1.5 pl-3 text-left text-[10px] font-semibold uppercase tracking-widest">Jour</th>
-                            <th className="text-muted-foreground px-2 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Service</th>
-                            <th className="text-muted-foreground py-1.5 pr-3 text-right text-[10px] font-semibold uppercase tracking-widest">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-border divide-y">
-                          {emp.joursTravail.map(jour => {
-                            const jourIdx = JOURS_FULL.indexOf(jour as typeof JOURS_FULL[number]);
-                            const date = new Date(lundi);
-                            date.setDate(lundi.getDate() + jourIdx);
-                            const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-                            const sKey = emp.services[0] ?? "matin";
-                            const h = SERVICE_HORAIRES[sKey];
-                            return (
-                              <tr key={jour}>
-                                <td className="py-2 pl-3">
-                                  <p className="font-semibold">{jour}</p>
-                                  <p className="text-muted-foreground">{dateStr}</p>
-                                </td>
-                                <td className="px-2 py-2">
-                                  {h && (
-                                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold",
-                                      sKey === "matin"   && "bg-blue-50   text-blue-700",
-                                      sKey === "soir"    && "bg-violet-50 text-violet-700",
-                                      sKey === "coupure" && "bg-teal-50   text-teal-700",
-                                    )}>{h.label}</span>
-                                  )}
-                                </td>
-                                <td className="py-2 pr-3 text-right">
-                                  {h ? (
-                                    <>
-                                      <p className="text-muted-foreground">{h.debut} – {h.fin}</p>
-                                      <p className="font-semibold">{h.duree}</p>
-                                    </>
-                                  ) : <span className="text-muted-foreground">—</span>}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-border border-b">
+                          <th className="text-muted-foreground pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Jour</th>
+                          <th className="text-muted-foreground px-4 pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Service</th>
+                          <th className="text-muted-foreground pb-2 text-right text-[10px] font-semibold uppercase tracking-widest">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-border divide-y">
+                        {emp.joursTravail.map(jour => {
+                          const jourIdx = JOURS_FULL.indexOf(jour as typeof JOURS_FULL[number]);
+                          const date = new Date(lundi);
+                          date.setDate(lundi.getDate() + jourIdx);
+                          const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                          const sKey = emp.services[0] ?? "matin";
+                          const h = SERVICE_HORAIRES[sKey];
+                          return (
+                            <tr key={jour}>
+                              <td className="py-3">
+                                <p className="text-sm font-semibold">{jour}</p>
+                                <p className="text-muted-foreground text-xs">{dateStr}</p>
+                              </td>
+                              <td className="px-4 py-3">
+                                {h && (
+                                  <span className={cn("rounded-md px-2.5 py-1 text-xs font-semibold",
+                                    sKey === "matin"   && "bg-blue-50   text-blue-700",
+                                    sKey === "soir"    && "bg-violet-50 text-violet-700",
+                                    sKey === "coupure" && "bg-teal-50   text-teal-700",
+                                  )}>{h.label}</span>
+                                )}
+                              </td>
+                              <td className="py-3 text-right">
+                                <p className="text-muted-foreground text-xs">{h?.debut} – {h?.fin}</p>
+                                <p className="text-sm font-semibold">{h?.duree ?? "—"}</p>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   );
                 })()}
 
+                {/* CTA — ferré à droite, juste sous le tableau */}
+                <div className="flex justify-end">
+                  <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
+                    Voir toutes les heures →
+                  </button>
+                </div>
+
                 {/* Indicateurs du mois */}
                 {emp.joursTravail.length > 0 && (() => {
-                  const reposMax    = maxReposConsecutifs(emp.joursTravail);
-                  const wkRepos     = weekendsReposCeMois(emp.joursTravail);
-                  const lowRepos    = reposMax <= 2;
-                  const noWeekend   = wkRepos === 0;
+                  const reposMax  = maxReposConsecutifs(emp.joursTravail);
+                  const wkRepos   = weekendsReposCeMois(emp.joursTravail);
+                  const lowRepos  = reposMax <= 2;
+                  const noWeekend = wkRepos === 0;
                   return (
                     <div className="grid grid-cols-2 gap-2">
                       <div className={cn("rounded-md border px-3 py-2.5", noWeekend ? "border-amber-200 bg-amber-50/60" : "border-border")}>
@@ -335,7 +339,7 @@ function DetailPanel({ emp, onClose, onSave }: {
                         </div>
                         <p className={cn("mt-1 text-xl font-bold", noWeekend && "text-amber-700")}>{wkRepos}</p>
                         <p className={cn("text-[10px]", noWeekend ? "text-amber-600" : "text-muted-foreground")}>
-                          {noWeekend ? "aucun ce mois-ci" : `ce mois-ci`}
+                          {noWeekend ? "aucun ce mois-ci" : "ce mois-ci"}
                         </p>
                       </div>
                       <div className={cn("rounded-md border px-3 py-2.5", lowRepos ? "border-amber-200 bg-amber-50/60" : "border-border")}>
@@ -347,17 +351,12 @@ function DetailPanel({ emp, onClose, onSave }: {
                         </div>
                         <p className={cn("mt-1 text-xl font-bold", lowRepos && "text-amber-700")}>{reposMax}</p>
                         <p className={cn("text-[10px]", lowRepos ? "text-amber-600" : "text-muted-foreground")}>
-                          {lowRepos ? `seulement ${reposMax}j max` : `jours max`}
+                          {lowRepos ? `seulement ${reposMax}j max` : "jours max"}
                         </p>
                       </div>
                     </div>
                   );
                 })()}
-
-                {/* CTA */}
-                <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
-                  Voir toutes les heures →
-                </button>
 
                 {/* Alertes */}
                 {(emp.alertes?.length ?? 0) > 0 && (
