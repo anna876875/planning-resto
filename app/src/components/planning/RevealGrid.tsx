@@ -9,9 +9,9 @@ import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
 const DAY_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 const SERVICES = [
-  { key: "ouverture", label: "Ouverture", startH: "07h", hours: "07:00 – 15:00", text: "text-sky-800",    dot: "bg-sky-500",    rowBg: "bg-sky-50/40"    },
-  { key: "midi",      label: "Midi",      startH: "11h", hours: "11:00 – 19:00", text: "text-teal-800",   dot: "bg-teal-500",   rowBg: "bg-teal-50/40"   },
-  { key: "soir",      label: "Soir",      startH: "15h", hours: "15:00 – 23:00", text: "text-violet-800", dot: "bg-violet-500", rowBg: "bg-violet-50/40" },
+  { key: "ouverture", label: "Ouverture", startH: "07h", endH: "15h", text: "text-sky-800",    dot: "bg-sky-500",    rowBg: "bg-sky-50/40"    },
+  { key: "midi",      label: "Midi",      startH: "11h", endH: "19h", text: "text-teal-800",   dot: "bg-teal-500",   rowBg: "bg-teal-50/40"   },
+  { key: "soir",      label: "Soir",      startH: "15h", endH: null,  text: "text-violet-800", dot: "bg-violet-500", rowBg: "bg-violet-50/40" },
 ] as const;
 
 const DEPARTMENTS = [
@@ -97,13 +97,21 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
           {SERVICES.map((svc, svcIdx) => (
             <tr key={svc.key} className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}>
 
-              {/* Colonne gauche — heure + point service */}
+              {/* Colonne gauche — embauche + coupure (si applicable) */}
               <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 64 }}>
-                <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+                <div className="flex flex-col items-center justify-center gap-1 px-2">
                   <span className={cn("text-[10px] font-thin tabular-nums tracking-wide select-none", svc.text)}>
                     {svc.startH}
                   </span>
-                  <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
+                  {svc.endH && (
+                    <>
+                      <span className={cn("text-[8px] opacity-30 leading-none select-none", svc.text)}>│</span>
+                      <span className={cn("text-[10px] font-thin tabular-nums tracking-wide select-none opacity-60", svc.text)}>
+                        {svc.endH}
+                      </span>
+                    </>
+                  )}
+                  <span className={cn("mt-1 h-1.5 w-1.5 rounded-full shrink-0", svc.dot)} />
                 </div>
               </td>
 
