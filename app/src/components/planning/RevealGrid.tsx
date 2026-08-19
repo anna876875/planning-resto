@@ -98,13 +98,16 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
               key={svc.key}
               className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}
             >
-              {/* Colonne gauche — service + horaires */}
+              {/* Colonne gauche — service + horaires + heure d'embauche */}
               <td className={cn("px-3 py-4 align-top", svc.rowBg)}>
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
                   <span className={cn("font-bold text-sm", svc.text)}>{svc.label}</span>
                 </div>
                 <p className={cn("text-[11px] pl-3.5 opacity-60", svc.text)}>{svc.hours}</p>
+                <p className={cn("text-[10px] pl-3.5 mt-1 font-semibold", svc.text)}>
+                  Embauche {svc.start}
+                </p>
               </td>
 
               {/* Cellule par jour */}
@@ -134,13 +137,8 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
                               {dept.label}
                             </span>
                             {group.map(emp => (
-                              <span key={emp.id} className="flex items-center gap-1">
-                                <span className={cn("text-[11px] font-medium leading-snug whitespace-nowrap", dept.text)}>
-                                  {emp.name.split(" ")[0]}
-                                </span>
-                                <span className="text-[9px] font-semibold opacity-50 tabular-nums">
-                                  {svc.start}
-                                </span>
+                              <span key={emp.id} className={cn("block text-[11px] font-medium leading-snug whitespace-nowrap", dept.text)}>
+                                {emp.name.split(" ")[0]}
                               </span>
                             ))}
                           </div>
