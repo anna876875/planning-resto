@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   ChevronLeft, ChevronRight, Plus, Copy, Send, Lock, Unlock, X,
   AlertCircle, AlertTriangle, Clock, CalendarX, Zap, Users,
@@ -152,7 +153,11 @@ const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: st
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export function PlanningView({ onPublished }: { onPublished?: (count: number) => void } = {}) {
+export function PlanningView({ onPublished, hideTabs = false, readOnly = false }: {
+  onPublished?: (count: number) => void;
+  hideTabs?: boolean;
+  readOnly?: boolean;
+} = {}) {
   const [activeTab, setActiveTab]   = useState<"planning" | "criteres">("planning");
   const [weekOffset, setWeekOffset] = useState(0);
   const [shiftsMap, setShiftsMap]   = useState<Record<string, Shift[]>>({});
@@ -278,7 +283,16 @@ export function PlanningView({ onPublished }: { onPublished?: (count: number) =>
 
         {/* CTA droite */}
         <div className="flex shrink-0 items-center gap-2">
-          {!editing ? (
+          {readOnly ? (
+            <>
+              <Link href="/dashboard/plannings/actif" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                <Pencil className="h-3.5 w-3.5" /> Modifier
+              </Link>
+              <Button size="sm" className="h-8 gap-1.5" disabled>
+                <Check className="h-3.5 w-3.5" /> Partagé
+              </Button>
+            </>
+          ) : !editing ? (
             <>
               {!locked && (
                 <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => setEditing(true)}>
@@ -307,23 +321,25 @@ export function PlanningView({ onPublished }: { onPublished?: (count: number) =>
       </div>
 
       {/* ── Tab bar ───────────────────────────────────────────────────────── */}
-      <div className="border-border flex shrink-0 border-b">
-        {(["planning", "criteres"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              "-mb-px border-b-2 px-4 py-2 text-xs font-medium transition-colors",
-              activeTab === tab
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {tab === "planning" ? "Planning" : "Critères de génération"}
-          </button>
-        ))}
-      </div>
+      {!hideTabs && (
+        <div className="border-border flex shrink-0 border-b">
+          {(["planning", "criteres"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "-mb-px border-b-2 px-4 py-2 text-xs font-medium transition-colors",
+                activeTab === tab
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab === "planning" ? "Planning" : "Critères de génération"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Bandeau édition ───────────────────────────────────────────────── */}
       {activeTab === "planning" && editing && (
@@ -423,7 +439,7 @@ export function PlanningView({ onPublished }: { onPublished?: (count: number) =>
             </colgroup>
             <thead className="sticky top-0 z-20">
               <tr className="border-border bg-card border-b">
-                <th className="border-border bg-card sticky left-0 z-30 border-r px-3 py-2.5" />
+                <th className="bg-card sticky left-0 z-30 px-3 py-2.5" />
                 {weekDays.map((day, i) => {
                   const isToday   = toYMD(day) === todayYMD;
                   const isWeekend = i >= 5;
@@ -454,7 +470,7 @@ export function PlanningView({ onPublished }: { onPublished?: (count: number) =>
             <tbody className="divide-border divide-y">
               {grid.map((svc) => (
                 <tr key={svc.type} className="align-top">
-                  <td className="border-border bg-background sticky left-0 z-10 border-r px-3 py-3">
+                  <td className="bg-background sticky left-0 z-10 px-3 py-3">
                     <div className="flex items-center gap-2">
                       <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", svc.dot)} />
                       <p className={cn("text-sm font-semibold", svc.text)}>{svc.label}</p>
@@ -469,70 +485,77 @@ export function PlanningView({ onPublished }: { onPublished?: (count: number) =>
                     });
                     return (
                       <td key={dateStr} className={cn(
-                        "px-1 py-1.5 align-top",
+                        "px-1 py-2 text-center align-middle",
                         isWeekend && "bg-muted/[0.05]",
                         isToday && "bg-primary/[0.02]"
                       )}>
-                        <div className="flex flex-col gap-1">
-                          {working.map((emp) => (
-                            <div key={emp.id} className={cn(
-                              "group flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors",
-                              svc.chip
-                            )}>
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/70 text-[9px] font-bold">
-                                {emp.name.charAt(0)}
-                              </span>
-                              {editing ? (
+                        {editing ? (
+                          /* ── Mode édition : liste individuelle ── */
+                          <div className="flex flex-col gap-1 text-left">
+                            {working.map((emp) => (
+                              <div key={emp.id} className={cn(
+                                "group flex items-center gap-1.5 rounded-md px-2 py-1.5 transition-colors",
+                                svc.chip
+                              )}>
                                 <button
                                   type="button"
                                   onClick={() => setEditModal({ employeeId: emp.id, date: dateStr })}
                                   className="min-w-0 flex-1 text-left"
                                 >
-                                  <p className="truncate text-xs font-semibold leading-tight">{emp.name}</p>
-                                  <p className="truncate text-[10px] leading-tight opacity-55">{emp.role.replace(/_/g, " ")}</p>
+                                  <p className="truncate text-xs font-semibold leading-tight">{emp.name.split(" ")[0]}</p>
                                 </button>
-                              ) : (
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-xs font-semibold leading-tight">{emp.name}</p>
-                                  <p className="truncate text-[10px] leading-tight opacity-55">{emp.role.replace(/_/g, " ")}</p>
-                                </div>
-                              )}
-                              {editing && (
                                 <button
                                   type="button"
                                   onClick={() => removeEmp(emp, dateStr)}
-                                  className="ml-auto shrink-0 rounded opacity-0 transition-opacity group-hover:opacity-50 hover:!opacity-100 hover:text-red-600"
+                                  className="ml-auto shrink-0 rounded opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100 hover:text-red-600"
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
-                              )}
-                            </div>
-                          ))}
-                          {editing && available.length > 0 && (
-                            <Popover>
-                              <PopoverTrigger className="flex w-full items-center gap-1 rounded-lg border border-dashed border-current/20 px-2 py-1 text-[11px] text-current/40 transition-colors hover:border-current/40 hover:text-current/70">
-                                <Plus className="h-3 w-3" /> Ajouter
-                              </PopoverTrigger>
-                              <PopoverContent className="w-52 p-1" align="start">
-                                <p className="text-muted-foreground mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide">{svc.label}</p>
-                                {available.map((emp) => (
-                                  <button
-                                    key={emp.id}
-                                    type="button"
-                                    onClick={() => quickAdd(emp, dateStr, svc.type)}
-                                    className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
-                                  >
-                                    <span className="bg-primary/10 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold">
-                                      {emp.name.charAt(0)}
-                                    </span>
-                                    <span className="flex-1 truncate">{emp.name.split(" ")[0]}</span>
-                                    <span className="text-muted-foreground text-[10px]">{emp.role.replace(/_/g, " ")}</span>
-                                  </button>
+                              </div>
+                            ))}
+                            {available.length > 0 && (
+                              <Popover>
+                                <PopoverTrigger className="flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-current/20 px-2 py-1 text-[11px] text-current/40 transition-colors hover:border-current/50 hover:text-current/80">
+                                  <Plus className="h-3 w-3" /> Ajouter
+                                </PopoverTrigger>
+                                <PopoverContent className="w-52 p-1" align="start">
+                                  <p className="text-muted-foreground mb-1 px-2 text-[10px] font-semibold uppercase tracking-wide">{svc.label}</p>
+                                  {available.map((emp) => (
+                                    <button
+                                      key={emp.id}
+                                      type="button"
+                                      onClick={() => quickAdd(emp, dateStr, svc.type)}
+                                      className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
+                                    >
+                                      <span className="flex-1 truncate text-left">{emp.name.split(" ")[0]}</span>
+                                      <span className="text-muted-foreground text-[10px]">{emp.role.replace(/_/g, " ")}</span>
+                                    </button>
+                                  ))}
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
+                        ) : (
+                          /* ── Mode lecture : count + hover tooltip ── */
+                          working.length > 0 ? (
+                            <div className="group/cell relative inline-block">
+                              <span className={cn(
+                                "flex h-8 w-8 cursor-default select-none items-center justify-center rounded-md text-sm font-bold transition-colors mx-auto",
+                                isToday ? "bg-primary/15 text-primary" : svc.chip
+                              )}>
+                                {working.length}
+                              </span>
+                              <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 rounded-md border border-border bg-background px-2.5 py-2 shadow-md group-hover/cell:visible min-w-[120px] text-left">
+                                <p className={cn("mb-1.5 text-[10px] font-semibold uppercase tracking-wide", svc.text)}>{svc.label} · {working.length} pers.</p>
+                                {working.map(emp => (
+                                  <p key={emp.id} className="text-xs text-foreground leading-relaxed whitespace-nowrap">{emp.name}</p>
                                 ))}
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/20 text-base">·</span>
+                          )
+                        )}
                       </td>
                     );
                   })}

@@ -37,6 +37,12 @@
       <version>${timefold.version}</version>
     </dependency>
 
+    <!-- Jackson JSR-310 : sérialisation LocalDate / LocalTime -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
+
     <!-- Tests -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

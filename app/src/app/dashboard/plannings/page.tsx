@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, CalendarDays, ChevronRight, Plus, X, NotebookPen, CheckCircle2, Search } from "lucide-react";
+import { Clock, Users, CalendarDays, ChevronRight, X, NotebookPen, CheckCircle2, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanningView } from "@/components/planning/PlanningView";
+import { GeneratePlanningModal } from "@/components/planning/GeneratePlanningModal";
 import { cn } from "@/lib/utils";
 import { mockPlannings, type PlanningRecord } from "@/lib/planning/mock-plannings";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
@@ -30,6 +31,7 @@ function computeStats(dateDebut: string) {
 }
 
 export default function PlanningsPage() {
+  const [showGenModal, setShowGenModal] = useState(false);
   const [selected, setSelected]   = useState<PlanningRecord | null>(null);
   const [annotation, setAnnotation]   = useState<Record<string, string>>({});
   const [dateFrom, setDateFrom]   = useState("");
@@ -58,8 +60,8 @@ export default function PlanningsPage() {
       {/* Titre + action */}
       <div className="flex items-center justify-between px-4 py-6 md:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Plannings</h1>
-        <Button size="sm" className="h-8 gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Nouveau
+        <Button size="sm" className="h-8 gap-1.5" onClick={() => setShowGenModal(true)}>
+          <Sparkles className="h-3.5 w-3.5" /> Générer un nouveau planning
         </Button>
       </div>
 
@@ -178,6 +180,9 @@ export default function PlanningsPage() {
           </div>
         </>
       )}
+
+      {/* Modale génération */}
+      {showGenModal && <GeneratePlanningModal onClose={() => setShowGenModal(false)} />}
 
       {/* Bannière succès slide-from-top */}
       {showSuccess && (

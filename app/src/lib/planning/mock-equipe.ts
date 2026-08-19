@@ -135,7 +135,9 @@ export const equipe: EmployeDetail[] = [
     dateDebut: "2024-02-05",
     joursTravail: ["Ven", "Sam", "Dim"],
     services: ["soir", "coupure"],
-    note: "Travaille uniquement le week-end et le vendredi soir.",
+    indisposHebdo: [
+      { jours: ["Lun", "Mar", "Mer", "Jeu"], motif: "Indisponible en semaine" },
+    ],
     alertes: [
       { type: "weekends_consecutifs", label: "4 weekends consécutifs", valeur: 4 },
       { type: "heures_sup", label: "+4h heures sup", valeur: 4 },

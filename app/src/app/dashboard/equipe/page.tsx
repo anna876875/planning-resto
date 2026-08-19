@@ -5,11 +5,12 @@ import {
   Search, Plus, AlertCircle, Users, LayoutGrid, List, Clock,
   Mail, Phone, CalendarOff, Repeat2, TrendingUp, X, CalendarDays,
   Pencil, Check, Trash2, UsersRound, Camera, Upload, Loader2, CheckCircle2,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { equipe, type ContratType, type StatutEmploye, type AlerteType, type EmployeDetail, type IndispoHebdo } from "@/lib/planning/mock-equipe";
+import { equipe, type ContratType, type StatutEmploye, type AlerteType, type EmployeDetail, type IndispoHebdo, type Indisponibilite } from "@/lib/planning/mock-equipe";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,99 @@ function weekendsReposCeMois(joursTravail: string[]): number {
 
 // ─── Panel détail ─────────────────────────────────────────────────────────────
 
-type Draft = Pick<EmployeDetail, "email" | "telephone" | "indisponibilites">;
+// ─── Indicateurs ─────────────────────────────────────────────────────────────
+
+type IndicateurNiveau = "ok" | "attention" | "critique";
+type Indicateur = { label: string; valeur: string; explication: string; niveau: IndicateurNiveau };
+
+function getIndicateurs(emp: EmployeDetail): Indicateur[] {
+  const wkRepos   = weekendsReposCeMois(emp.joursTravail);
+  const reposMax  = maxReposConsecutifs(emp.joursTravail);
+  const items: Indicateur[] = [];
+
+  items.push({
+    label: "Weekends de repos",
+    valeur: wkRepos === 0 ? "Aucun ce mois" : `${wkRepos} ce mois`,
+    explication: wkRepos === 0
+      ? "Travaille tous les weekends — situation à rééquilibrer avec l'équipe."
+      : wkRepos <= 1
+      ? "Très peu de repos le weekend — risque de fatigue à surveiller."
+      : wkRepos >= 3
+      ? `Bénéficie de ${wkRepos} weekends libres — au-dessus de la moyenne de l'équipe.`
+      : `${wkRepos} weekends de repos — dans la moyenne de l'équipe.`,
+    niveau: wkRepos === 0 ? "critique" : wkRepos <= 1 ? "attention" : "ok",
+  });
+
+  items.push({
+    label: "Repos consécutifs",
+    valeur: reposMax <= 1 ? "1 jour max" : `${reposMax} jours max`,
+    explication: reposMax <= 1
+      ? "Jamais plus d'un jour de repos d'affilée — peu de temps pour récupérer."
+      : reposMax === 2
+      ? "2 jours de repos consécutifs — norme courante en restauration."
+      : `${reposMax} jours de repos d'affilée — bonne récupération entre les shifts.`,
+    niveau: reposMax <= 1 ? "critique" : reposMax === 2 ? "attention" : "ok",
+  });
+
+  if (emp.heuresReelles !== undefined && emp.heuresReelles !== emp.heuresHebdo) {
+    const diff = emp.heuresReelles - emp.heuresHebdo;
+    items.push({
+      label: "Heures supplémentaires",
+      valeur: `${diff > 0 ? "+" : ""}${diff}h`,
+      explication: diff > 0
+        ? `A travaillé ${diff}h de plus que son contrat — à rémunérer ou récupérer.`
+        : `${Math.abs(diff)}h en dessous du contrat — vérifiez si c'est prévu.`,
+      niveau: Math.abs(diff) >= 6 ? "critique" : "attention",
+    });
+  }
+
+  for (const a of (emp.alertes ?? [])) {
+    if (a.type === "jours_consecutifs") {
+      items.push({
+        label: "Jours sans repos",
+        valeur: `${a.valeur} jours`,
+        explication: `Travaille ${a.valeur} jours d'affilée — limite légale à surveiller.`,
+        niveau: "critique",
+      });
+    }
+    if (a.type === "heures_sup" && (emp.heuresReelles === undefined || emp.heuresReelles === emp.heuresHebdo)) {
+      items.push({
+        label: "Heures supplémentaires",
+        valeur: a.label,
+        explication: "A dépassé son volume horaire contractuel — vérifiez la compensation.",
+        niveau: "attention",
+      });
+    }
+  }
+
+  return items;
+}
+
+function IndicateurCard({ label, valeur, explication, niveau }: Indicateur) {
+  const dot = { ok: "bg-emerald-400", attention: "bg-amber-400", critique: "bg-red-400" }[niveau];
+  return (
+    <div className="border-border flex items-start gap-2.5 rounded-md border px-3 py-2.5">
+      <span className={cn("mt-1 h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">{label}</p>
+          <p className="text-sm font-semibold">{valeur}</p>
+        </div>
+        <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">{explication}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Panel détail ─────────────────────────────────────────────────────────────
+
+type Draft = {
+  email: string;
+  telephone: string;
+  contrat: ContratType;
+  heuresReelles: number | undefined;
+  indisponibilites: Indisponibilite[];
+};
 const EMPTY_INDISPO = { debut: "", fin: "", motif: "" };
 
 function DetailPanel({ emp, onClose, onSave }: {
@@ -153,12 +246,12 @@ function DetailPanel({ emp, onClose, onSave }: {
   const open = emp !== null;
 
   const [editing, setEditing]         = useState(false);
-  const [draft, setDraft]             = useState<Draft>({ email: "", telephone: "", indisponibilites: [] });
+  const [draft, setDraft]             = useState<Draft>({ email: "", telephone: "", contrat: "CDI", heuresReelles: undefined, indisponibilites: [] });
   const [newIndispo, setNewIndispo]    = useState(EMPTY_INDISPO);
   const [addingIndispo, setAddingIndispo] = useState(false);
 
   function resetDraft(e: EmployeDetail) {
-    setDraft({ email: e.email, telephone: e.telephone, indisponibilites: [...(e.indisponibilites ?? [])] });
+    setDraft({ email: e.email, telephone: e.telephone, contrat: e.contrat, heuresReelles: e.heuresReelles, indisponibilites: [...(e.indisponibilites ?? [])] });
     setEditing(false);
     setAddingIndispo(false);
     setNewIndispo(EMPTY_INDISPO);
@@ -221,11 +314,11 @@ function DetailPanel({ emp, onClose, onSave }: {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setEditing(true)}>
                     <Pencil className="h-3.5 w-3.5" /> Modifier
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={onClose}>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={onClose}>
                   <X className="h-3.5 w-3.5" /> Fermer
                 </Button>
               </div>
@@ -234,7 +327,7 @@ function DetailPanel({ emp, onClose, onSave }: {
             <div className="flex-1 divide-y divide-border overflow-y-auto">
 
               {/* Infos principales */}
-              <div className="space-y-5 px-4 py-5">
+              <div className="space-y-4 px-4 py-4">
 
                 {/* Heures (gauche) — Badges statut/contrat (droite) */}
                 <div className="flex items-start justify-between gap-4">
@@ -268,106 +361,106 @@ function DetailPanel({ emp, onClose, onSave }: {
                   </div>
                 </div>
 
-                {/* Tableau des jours — sans stroke, aéré */}
+                {/* Tableau des jours */}
                 {emp.joursTravail.length > 0 && (() => {
                   const lundi = getLundiSemaine();
                   return (
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-border border-b">
-                          <th className="text-muted-foreground pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Jour travaillé</th>
-                          <th className="text-muted-foreground px-4 pb-2 text-left text-[10px] font-semibold uppercase tracking-widest">Type de service</th>
-                          <th className="text-muted-foreground pb-2 text-right text-[10px] font-semibold uppercase tracking-widest">Heure totale</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-border divide-y">
-                        {emp.joursTravail.map(jour => {
-                          const jourIdx = JOURS_FULL.indexOf(jour as typeof JOURS_FULL[number]);
-                          const date = new Date(lundi);
-                          date.setDate(lundi.getDate() + jourIdx);
-                          const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
-                          const sKey = emp.services[0] ?? "matin";
-                          const h = SERVICE_HORAIRES[sKey];
-                          return (
-                            <tr key={jour}>
-                              <td className="py-3">
-                                <p className="text-sm font-semibold">{jour}</p>
-                                <p className="text-muted-foreground text-xs">{dateStr}</p>
-                              </td>
-                              <td className="px-4 py-3">
-                                {h && (
-                                  <span className={cn("rounded-md px-2.5 py-1 text-xs font-semibold",
-                                    sKey === "matin"   && "bg-blue-50   text-blue-700",
-                                    sKey === "soir"    && "bg-violet-50 text-violet-700",
-                                    sKey === "coupure" && "bg-teal-50   text-teal-700",
-                                  )}>{h.label}</span>
-                                )}
-                              </td>
-                              <td className="py-3 text-right">
-                                <p className="text-muted-foreground text-xs">{h?.debut} – {h?.fin}</p>
-                                <p className="text-sm font-semibold">{h?.duree ?? "—"}</p>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  );
-                })()}
-
-                {/* CTA — ferré à droite, juste sous le tableau */}
-                <div className="flex justify-end">
-                  <button type="button" className="text-primary text-xs hover:underline underline-offset-2">
-                    Voir toutes les heures →
-                  </button>
-                </div>
-
-                {/* Indicateurs du mois */}
-                {emp.joursTravail.length > 0 && (() => {
-                  const reposMax  = maxReposConsecutifs(emp.joursTravail);
-                  const wkRepos   = weekendsReposCeMois(emp.joursTravail);
-                  const lowRepos  = reposMax <= 2;
-                  const noWeekend = wkRepos === 0;
-                  return (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className={cn("rounded-md border px-3 py-2.5", noWeekend ? "border-amber-200 bg-amber-50/60" : "border-border")}>
-                        <div className="flex items-center gap-1.5">
-                          <CalendarOff className={cn("h-3 w-3", noWeekend ? "text-amber-500" : "text-muted-foreground")} />
-                          <p className={cn("text-[10px] font-semibold uppercase tracking-widest", noWeekend ? "text-amber-600" : "text-muted-foreground")}>
-                            Weekends repos
-                          </p>
-                        </div>
-                        <p className={cn("mt-1 text-xl font-bold", noWeekend && "text-amber-700")}>{wkRepos}</p>
-                        <p className={cn("text-[10px]", noWeekend ? "text-amber-600" : "text-muted-foreground")}>
-                          {noWeekend ? "aucun ce mois-ci" : "ce mois-ci"}
-                        </p>
-                      </div>
-                      <div className={cn("rounded-md border px-3 py-2.5", lowRepos ? "border-amber-200 bg-amber-50/60" : "border-border")}>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className={cn("h-3 w-3", lowRepos ? "text-amber-500" : "text-muted-foreground")} />
-                          <p className={cn("text-[10px] font-semibold uppercase tracking-widest", lowRepos ? "text-amber-600" : "text-muted-foreground")}>
-                            Repos consécutifs
-                          </p>
-                        </div>
-                        <p className={cn("mt-1 text-xl font-bold", lowRepos && "text-amber-700")}>{reposMax}</p>
-                        <p className={cn("text-[10px]", lowRepos ? "text-amber-600" : "text-muted-foreground")}>
-                          {lowRepos ? `seulement ${reposMax}j max` : "jours max"}
-                        </p>
+                    <div>
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="text-muted-foreground pb-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Jour travaillé</th>
+                            <th className="text-muted-foreground px-4 pb-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Service</th>
+                            <th className="text-muted-foreground pb-1.5 text-right text-[10px] font-semibold uppercase tracking-widest">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {emp.joursTravail.map((jour, rowIdx) => {
+                            const jourIdx = JOURS_FULL.indexOf(jour as typeof JOURS_FULL[number]);
+                            const date = new Date(lundi);
+                            date.setDate(lundi.getDate() + jourIdx);
+                            const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+                            const sKey = emp.services[0] ?? "matin";
+                            const h = SERVICE_HORAIRES[sKey];
+                            const isVen = jour === "Ven";
+                            const nextJour = emp.joursTravail[rowIdx + 1];
+                            const addGap = isVen && nextJour && (nextJour === "Sam" || nextJour === "Dim");
+                            return (
+                              <tr key={jour} className={addGap ? "pb-1" : ""}>
+                                <td className="py-2">
+                                  <p className="text-sm font-semibold">{jour}</p>
+                                  <p className="text-muted-foreground text-xs">{dateStr}</p>
+                                </td>
+                                <td className="px-4 py-2">
+                                  {h && (
+                                    <span className={cn("rounded-md px-2.5 py-1 text-xs font-semibold",
+                                      sKey === "matin"   && "bg-blue-50   text-blue-700",
+                                      sKey === "soir"    && "bg-violet-50 text-violet-700",
+                                      sKey === "coupure" && "bg-teal-50   text-teal-700",
+                                    )}>{h.label}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 text-right">
+                                  <p className="text-muted-foreground text-xs">{h?.debut} – {h?.fin}</p>
+                                  <p className="text-sm font-semibold">{h?.duree ?? "—"}</p>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <div className="flex justify-end">
+                        <button type="button" className="text-primary flex items-center gap-1 text-xs hover:underline underline-offset-2">
+                          Voir toutes les heures <MoreHorizontal className="h-3 w-3" />
+                        </button>
                       </div>
                     </div>
                   );
                 })()}
 
-                {/* Alertes */}
-                {(emp.alertes?.length ?? 0) > 0 && (
-                  <AlertesBadges alertes={emp.alertes!} />
+                {/* Indicateurs équité */}
+                {emp.joursTravail.length > 0 && (
+                  <div className="space-y-2">
+                    {getIndicateurs(emp).map(ind => (
+                      <IndicateurCard key={ind.label} {...ind} />
+                    ))}
+                  </div>
                 )}
 
                 {emp.note && <p className="text-muted-foreground text-xs italic">{emp.note}</p>}
               </div>
 
+              {/* Contrat — édition uniquement */}
+              {editing && (
+                <div className="px-4 pb-4 space-y-3">
+                  <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Contrat</p>
+                  <Field label="Type de contrat">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(["CDI", "CDD", "temps_partiel", "extra"] as ContratType[]).map(c => (
+                        <button key={c} type="button"
+                          onClick={() => setDraft(d => ({ ...d, contrat: c }))}
+                          className={cn("rounded-md border px-2 py-1.5 text-xs font-semibold transition-colors",
+                            draft.contrat === c
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/50"
+                          )}>
+                          {CONTRAT_CFG[c].label}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="Heures réalisées cette semaine">
+                    <Input type="number"
+                      value={draft.heuresReelles !== undefined ? String(draft.heuresReelles) : ""}
+                      onChange={v => setDraft(d => ({ ...d, heuresReelles: v !== "" ? Number(v) : undefined }))}
+                      placeholder={`${emp.heuresHebdo} h (selon contrat)`}
+                    />
+                  </Field>
+                </div>
+              )}
+
               {/* Contact — lecture ou édition */}
-              <div className="px-4 py-4 space-y-3">
+              <div className="px-4 pb-4 space-y-3">
                 <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Contact</p>
                 {editing ? (
                   <>
@@ -391,7 +484,7 @@ function DetailPanel({ emp, onClose, onSave }: {
               </div>
 
               {/* Indisponibilités — lecture ou édition */}
-              <div className="px-4 py-4">
+              <div className="px-4 pb-4">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">Indisponibilités</p>
                   {editing && !addingIndispo && (
@@ -913,8 +1006,12 @@ function AjouterEmployeModal({ onClose, onAdd }: {
 
 // ─── Groupes / équipes ────────────────────────────────────────────────────────
 
-function EquipesModal({ team, onClose }: { team: EmployeDetail[]; onClose: () => void }) {
-  const [groupes, setGroupes]       = useState<EquipeGroupe[]>(INITIAL_GROUPES);
+function EquipesModal({ team, groupes, setGroupes, onClose }: {
+  team: EmployeDetail[];
+  groupes: EquipeGroupe[];
+  setGroupes: React.Dispatch<React.SetStateAction<EquipeGroupe[]>>;
+  onClose: () => void;
+}) {
   const [editId, setEditId]         = useState<string | "new" | null>(null);
   const [formNom, setFormNom]       = useState("");
   const [formSaison, setFormSaison] = useState("");
@@ -1108,6 +1205,7 @@ export default function EquipePage() {
   const [selected, setSelected]   = useState<EmployeDetail | null>(null);
   const [equipesOpen, setEquipesOpen]   = useState(false);
   const [ajouterOpen, setAjouterOpen]   = useState(false);
+  const [groupes, setGroupes]     = useState<EquipeGroupe[]>(INITIAL_GROUPES);
 
   const METIERS = ["Tous", ...Array.from(new Set(team.map((e) => secteur(e.poste)))).sort()];
 
@@ -1115,7 +1213,7 @@ export default function EquipePage() {
     setTeam(prev => [...prev, emp]);
   }
 
-  function handleSave(id: string, patch: Pick<EmployeDetail, "email" | "telephone" | "indisponibilites">) {
+  function handleSave(id: string, patch: Draft) {
     setTeam(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
     setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev);
   }
@@ -1127,10 +1225,12 @@ export default function EquipePage() {
     return matchSearch && matchMetier;
   });
 
-  const actifs    = team.filter((e) => e.statut === "actif");
-  const nbActifs  = actifs.length;
-  const totalH    = actifs.reduce((a, e) => a + e.heuresHebdo, 0);
-  const nbAlertes = team.reduce((a, e) => a + (e.alertes?.length ?? 0), 0);
+  const moyWkRepos = team.length > 0
+    ? (team.reduce((s, e) => s + weekendsReposCeMois(e.joursTravail), 0) / team.length).toFixed(1)
+    : "0";
+  const moyReposConsec = team.length > 0
+    ? (team.reduce((s, e) => s + maxReposConsecutifs(e.joursTravail), 0) / team.length).toFixed(1)
+    : "0";
 
   return (
     <>
@@ -1154,22 +1254,20 @@ export default function EquipePage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {[
-              { icon: Users,        label: "Employés",      value: team.length,    accent: false },
-              { icon: Clock,        label: "Heures / sem.", value: `${totalH} h`,    accent: false },
-              { icon: Users,        label: "Actifs",        value: nbActifs,         accent: true  },
-              { icon: AlertCircle,  label: "Alertes",       value: nbAlertes,        accent: false, danger: nbAlertes > 0 },
-            ].map(({ icon: Icon, label, value, accent, danger }) => (
+              { icon: Users,      label: "Employés",            value: team.length,          sub: "dans l'équipe" },
+              { icon: UsersRound, label: "Équipes",             value: groupes.length || "—", sub: "définies" },
+              { icon: CalendarOff,label: "Weekends repos",      value: `${moyWkRepos}/mois`,  sub: "moy. par employé" },
+              { icon: Clock,      label: "Repos consécutifs",   value: `${moyReposConsec}j`,  sub: "moy. max par semaine" },
+            ].map(({ icon: Icon, label, value, sub }) => (
               <Card key={label}>
                 <CardContent className="flex items-center gap-3 p-4">
-                  <div className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    accent ? "bg-primary" : danger ? "bg-red-100" : "bg-primary/10"
-                  )}>
-                    <Icon className={cn("h-5 w-5", accent ? "text-primary-foreground" : danger ? "text-red-600" : "text-primary")} />
+                  <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                    <Icon className="text-primary h-5 w-5" />
                   </div>
                   <div>
                     <p className="text-muted-foreground text-xs">{label}</p>
                     <p className="text-xl font-bold">{value}</p>
+                    <p className="text-muted-foreground text-[10px]">{sub}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1245,10 +1343,11 @@ export default function EquipePage() {
                   <Card
                     key={emp.id}
                     onClick={() => setSelected(emp)}
-                    className="flex h-full cursor-pointer flex-col rounded-md transition-colors hover:border-primary/50"
+                    className="relative flex h-full cursor-pointer flex-col rounded-md transition-all hover:border-primary hover:shadow-sm"
                   >
+                    <MoreHorizontal className="text-muted-foreground/35 absolute top-2.5 right-2.5 h-3.5 w-3.5" />
                     <CardContent className="flex flex-1 flex-col p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 pr-4">
                         <div className={cn("relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold", AVATAR_CLS)}>
                           {emp.nom.charAt(0)}
                           <span className={cn("absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", sc.dot)} />
@@ -1259,7 +1358,8 @@ export default function EquipePage() {
                             <p className="text-muted-foreground shrink-0 text-xs">{emp.poste}</p>
                           </div>
                           <p className="text-muted-foreground text-xs">
-                            {emp.heuresHebdo} h/sem.
+                            <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-semibold", cc.color)}>{cc.label}</span>
+                            <span className="ml-2">{emp.heuresHebdo} h/sem.</span>
                             {nbIndispo > 0 && <span className="ml-2 opacity-60">· {nbIndispo} indispo.</span>}
                             {emp.statut !== "actif" && (
                               <span className={cn("ml-2 font-medium", emp.statut === "congé" ? "text-amber-600" : "text-red-600")}>
@@ -1268,9 +1368,6 @@ export default function EquipePage() {
                             )}
                           </p>
                         </div>
-                        <span className={cn("shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold", cc.color)}>
-                          {cc.label}
-                        </span>
                       </div>
                       <div className="flex-1" />
                       {hasAlerte && (
@@ -1297,6 +1394,7 @@ export default function EquipePage() {
                     <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest">H/sem.</th>
                     <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest">Statut</th>
                     <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest">Alertes</th>
+                    <th className="w-8" />
                   </tr>
                 </thead>
                 <tbody className="divide-border divide-y">
@@ -1308,7 +1406,7 @@ export default function EquipePage() {
                       <tr
                         key={emp.id}
                         onClick={() => setSelected(emp)}
-                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        className="hover:bg-muted/60 cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2.5">
@@ -1340,6 +1438,9 @@ export default function EquipePage() {
                             : <span className="text-muted-foreground/30 text-xs">—</span>
                           }
                         </td>
+                        <td className="pr-3 py-2.5 text-right">
+                          <MoreHorizontal className="text-muted-foreground/40 ml-auto h-4 w-4" />
+                        </td>
                       </tr>
                     );
                   })}
@@ -1351,7 +1452,7 @@ export default function EquipePage() {
       </div>
 
       <DetailPanel emp={selected} onClose={() => setSelected(null)} onSave={handleSave} />
-      {equipesOpen && <EquipesModal team={team} onClose={() => setEquipesOpen(false)} />}
+      {equipesOpen && <EquipesModal team={team} groupes={groupes} setGroupes={setGroupes} onClose={() => setEquipesOpen(false)} />}
       {ajouterOpen && <AjouterEmployeModal onClose={() => setAjouterOpen(false)} onAdd={handleAddEmploye} />}
     </>
   );
