@@ -101,7 +101,7 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
               {/* Colonne gauche — embauche + coupure (si applicable) */}
               <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 64 }}>
                 <div className="flex flex-col items-center justify-center gap-1.5 px-2">
-                  <span className={cn("text-[10px] font-thin tabular-nums tracking-wide select-none", svc.text)}>
+                  <span className={cn("text-[11px] font-light tabular-nums tracking-wide select-none", svc.text)}>
                     {svc.startH}
                   </span>
                   <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", svc.dot)} />
@@ -152,7 +152,7 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
             {svc.key === "midi" && (
               <tr key="coupure" className="border-b border-border/50">
                 <td className="bg-muted/40 py-2 px-4" style={{ width: 64 }}>
-                  <span className="text-[8px] font-thin tracking-widest text-muted-foreground/40 select-none">
+                  <span className="text-[9px] font-light tracking-widest text-muted-foreground/60 select-none">
                     coupure
                   </span>
                 </td>
