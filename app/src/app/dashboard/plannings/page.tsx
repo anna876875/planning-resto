@@ -78,7 +78,7 @@ export default function PlanningsPage() {
             </span>
           </div>
           <div className="border border-border rounded-xl overflow-hidden" style={{ height: 480 }}>
-            <PlanningView />
+            <PlanningView hideTabs hideNav hideStatus />
           </div>
         </div>
       )}

@@ -163,9 +163,11 @@ const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: st
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export function PlanningView({ onPublished, hideTabs = false, readOnly = false, showNames = false }: {
+export function PlanningView({ onPublished, hideTabs = false, hideNav = false, hideStatus = false, readOnly = false, showNames = false }: {
   onPublished?: (count: number) => void;
   hideTabs?: boolean;
+  hideNav?: boolean;
+  hideStatus?: boolean;
   readOnly?: boolean;
   showNames?: boolean;
 } = {}) {
@@ -285,40 +287,46 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
       {/* ── Barre principale ─────────────────────────────────────────────── */}
       <div className="border-border bg-background z-20 flex flex-wrap items-center gap-2 border-b px-4 py-2.5 md:px-6">
         {/* Statut */}
-        <div className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", sc.color)}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", sc.dot)} />
-          {sc.label}
-        </div>
+        {!hideStatus && (
+          <div className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium", sc.color)}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", sc.dot)} />
+            {sc.label}
+          </div>
+        )}
 
         {/* Navigation + toggle vue */}
-        <div className="flex flex-1 items-center justify-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7"
-            onClick={() => viewMode === "semaine" ? setWeekOffset(w => w - 1) : setDayOffset(d => d - 1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-44 text-center text-sm font-semibold">
-            {viewMode === "semaine" ? weekLabel : selectedDayLabel}
-          </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7"
-            onClick={() => viewMode === "semaine" ? setWeekOffset(w => w + 1) : setDayOffset(d => d + 1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs"
-            onClick={() => viewMode === "semaine" ? setWeekOffset(0) : setDayOffset(0)}>
-            Auj.
-          </Button>
-          <div className="ml-2 flex overflow-hidden rounded-md border border-border">
-            {(["semaine", "jour"] as const).map(mode => (
-              <button key={mode} type="button" onClick={() => setViewMode(mode)}
-                className={cn(
-                  "px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                )}>
-                {mode === "semaine" ? "Sem." : "Jour"}
-              </button>
-            ))}
+        {!hideNav ? (
+          <div className="flex flex-1 items-center justify-center gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7"
+              onClick={() => viewMode === "semaine" ? setWeekOffset(w => w - 1) : setDayOffset(d => d - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-44 text-center text-sm font-semibold">
+              {viewMode === "semaine" ? weekLabel : selectedDayLabel}
+            </span>
+            <Button variant="ghost" size="icon" className="h-7 w-7"
+              onClick={() => viewMode === "semaine" ? setWeekOffset(w => w + 1) : setDayOffset(d => d + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs"
+              onClick={() => viewMode === "semaine" ? setWeekOffset(0) : setDayOffset(0)}>
+              Auj.
+            </Button>
+            <div className="ml-2 flex overflow-hidden rounded-md border border-border">
+              {(["semaine", "jour"] as const).map(mode => (
+                <button key={mode} type="button" onClick={() => setViewMode(mode)}
+                  className={cn(
+                    "px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  )}>
+                  {mode === "semaine" ? "Sem." : "Jour"}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* CTA droite */}
         <div className="flex shrink-0 items-center gap-2">
