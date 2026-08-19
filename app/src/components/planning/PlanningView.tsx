@@ -153,10 +153,11 @@ const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: st
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export function PlanningView({ onPublished, hideTabs = false, readOnly = false }: {
+export function PlanningView({ onPublished, hideTabs = false, readOnly = false, showNames = false }: {
   onPublished?: (count: number) => void;
   hideTabs?: boolean;
   readOnly?: boolean;
+  showNames?: boolean;
 } = {}) {
   const [activeTab, setActiveTab]   = useState<"planning" | "criteres">("planning");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -536,22 +537,37 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false }
                             )}
                           </div>
                         ) : (
-                          /* ── Mode lecture : count + hover tooltip ── */
+                          /* ── Mode lecture ── */
                           working.length > 0 ? (
-                            <div className="group/cell relative inline-block">
-                              <span className={cn(
-                                "flex h-8 w-8 cursor-default select-none items-center justify-center rounded-md text-sm font-bold transition-colors mx-auto",
-                                isToday ? "bg-primary/15 text-primary" : svc.chip
-                              )}>
-                                {working.length}
-                              </span>
-                              <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 rounded-md border border-border bg-background px-2.5 py-2 shadow-md group-hover/cell:visible min-w-[120px] text-left">
-                                <p className={cn("mb-1.5 text-[10px] font-semibold uppercase tracking-wide", svc.text)}>{svc.label} · {working.length} pers.</p>
+                            showNames ? (
+                              /* Noms directement visibles */
+                              <div className="flex flex-col items-start gap-0.5 px-1 py-0.5">
                                 {working.map(emp => (
-                                  <p key={emp.id} className="text-xs text-foreground leading-relaxed whitespace-nowrap">{emp.name}</p>
+                                  <span key={emp.id} className={cn(
+                                    "text-[11px] font-medium leading-tight whitespace-nowrap",
+                                    isToday ? "text-primary" : svc.text
+                                  )}>
+                                    {emp.name.split(" ")[0]}
+                                  </span>
                                 ))}
                               </div>
-                            </div>
+                            ) : (
+                              /* Count + hover tooltip */
+                              <div className="group/cell relative inline-block">
+                                <span className={cn(
+                                  "flex h-8 w-8 cursor-default select-none items-center justify-center rounded-md text-sm font-bold transition-colors mx-auto",
+                                  isToday ? "bg-primary/15 text-primary" : svc.chip
+                                )}>
+                                  {working.length}
+                                </span>
+                                <div className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1.5 -translate-x-1/2 rounded-md border border-border bg-background px-2.5 py-2 shadow-md group-hover/cell:visible min-w-[120px] text-left">
+                                  <p className={cn("mb-1.5 text-[10px] font-semibold uppercase tracking-wide", svc.text)}>{svc.label} · {working.length} pers.</p>
+                                  {working.map(emp => (
+                                    <p key={emp.id} className="text-xs text-foreground leading-relaxed whitespace-nowrap">{emp.name}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            )
                           ) : (
                             <span className="text-muted-foreground/20 text-base">·</span>
                           )

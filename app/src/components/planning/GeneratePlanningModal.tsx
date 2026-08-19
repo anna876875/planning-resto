@@ -1,16 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Check, Loader2, Sparkles, Users, Clock, CalendarX, Calendar } from "lucide-react";
-import dynamic from "next/dynamic";
+import { X, Check, Loader2, Sparkles, Users, Clock, CalendarX } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const PlanningView = dynamic(
-  () => import("@/components/planning/PlanningView").then(m => ({ default: m.PlanningView })),
-  { ssr: false }
-);
+const RevealGrid = dynamic(() => import("./RevealGrid"), { ssr: false });
 
 /* ── helpers date ───────────────────────────────────────────── */
 
@@ -80,6 +77,8 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
   const [phase, setPhase]               = useState<Phase>("periode");
   const [dateFrom, setDateFrom]         = useState(toISO(nextMon));
   const [dateTo, setDateTo]             = useState(toISO(nextSun));
+  const [activeShortcut, setActiveShortcut] = useState<string>("La semaine prochaine");
+  const [showCustom, setShowCustom]     = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [loadingStep,  setLoadingStep]  = useState(0);
   const [revealIn,     setRevealIn]     = useState(false);
@@ -134,11 +133,17 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
 
   /* synchro dateFrom/dateTo : si from > to, ajuste to */
   function handleFromChange(val: string) {
+    setActiveShortcut("Date personnalisée");
     setDateFrom(val);
     if (dateTo && val > dateTo) {
       const from = new Date(val + "T00:00:00");
       setDateTo(toISO(addDays(from, 6)));
     }
+  }
+
+  function handleToChange(val: string) {
+    setActiveShortcut("Date personnalisée");
+    setDateTo(val);
   }
 
   function handleLaunch() {
@@ -164,16 +169,9 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 0 — PÉRIODE  ═══════════════ */}
         {phase === "periode" && (
           <>
+            {/* Header avec titre + séparateur */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <Calendar className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold leading-tight">Nouveau planning</p>
-                  <p className="text-[11px] text-muted-foreground">Définissez la période</p>
-                </div>
-              </div>
+              <h2 className="text-base font-semibold tracking-tight">Générer le planning</h2>
               <button
                 onClick={onClose}
                 className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
@@ -182,81 +180,101 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
-            <div className="px-5 py-6 space-y-5">
-              {/* Raccourcis — en premier */}
-              <div className="grid grid-cols-3 gap-2">
+            <div className="px-5 py-5 space-y-4">
+              {/* Sous-titre */}
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                Choisir la période
+              </p>
+
+              {/* Grille 2×2 : 3 raccourcis + date personnalisée */}
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: "La semaine prochaine", fn: () => {
                     const m = getNextMonday();
-                    setDateFrom(toISO(m));
-                    setDateTo(toISO(addDays(m, 6)));
+                    setDateFrom(toISO(m)); setDateTo(toISO(addDays(m, 6)));
+                    setActiveShortcut("La semaine prochaine"); setShowCustom(false);
                   }},
                   { label: "Les 2 prochaines semaines", fn: () => {
                     const m = getNextMonday();
-                    setDateFrom(toISO(m));
-                    setDateTo(toISO(addDays(m, 13)));
+                    setDateFrom(toISO(m)); setDateTo(toISO(addDays(m, 13)));
+                    setActiveShortcut("Les 2 prochaines semaines"); setShowCustom(false);
                   }},
                   { label: "Ce mois-ci", fn: () => {
                     const now = new Date();
-                    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-                    const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                    setDateFrom(toISO(first));
-                    setDateTo(toISO(last));
+                    setDateFrom(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
+                    setDateTo(toISO(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
+                    setActiveShortcut("Ce mois-ci"); setShowCustom(false);
                   }},
-                ].map(s => (
-                  <button
-                    key={s.label}
-                    type="button"
-                    onClick={s.fn}
-                    className="rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-center leading-snug"
-                  >
-                    {s.label}
-                  </button>
-                ))}
+                  { label: "Date personnalisée", fn: () => {
+                    setShowCustom(c => !c);
+                    setActiveShortcut("Date personnalisée");
+                  }},
+                ].map(s => {
+                  const isActive = activeShortcut === s.label;
+                  return (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={s.fn}
+                      className={cn(
+                        "rounded-xl border px-3 py-3 text-xs font-medium transition-colors text-center leading-snug",
+                        isActive
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border bg-muted/30 text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Sélecteurs de dates */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                    Début
-                  </label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={e => handleFromChange(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                    Fin
-                  </label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    min={dateFrom}
-                    onChange={e => setDateTo(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-                  />
-                </div>
-              </div>
-
-              {/* Résumé de la période */}
-              {dateValid && (
-                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
-                  <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{periodLabel}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {Math.round((new Date(dateTo + "T00:00:00").getTime() - new Date(dateFrom + "T00:00:00").getTime()) / 86400000) + 1} jours
-                    </p>
+              {/* Champs de dates — visibles uniquement si "Date personnalisée" */}
+              {showCustom && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      Premier jour
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => handleFromChange(e.target.value)}
+                      className={cn(
+                        "w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all",
+                        activeShortcut === "Date personnalisée" ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      Dernier jour
+                    </label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      min={dateFrom}
+                      onChange={e => handleToChange(e.target.value)}
+                      className={cn(
+                        "w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all",
+                        activeShortcut === "Date personnalisée" ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    />
                   </div>
                 </div>
               )}
+
+              {/* Récap phrase italique */}
+              {dateValid && (
+                <p className="text-[12px] italic text-muted-foreground">
+                  Le planning couvrira{" "}
+                  {Math.round((new Date(dateTo + "T00:00:00").getTime() - new Date(dateFrom + "T00:00:00").getTime()) / 86400000) + 1}{" "}
+                  jours, du {formatDate(dateFrom)} au {formatDate(dateTo)}.
+                </p>
+              )}
             </div>
 
-            <div className="px-5 py-4 border-t border-border">
+            <div className="px-5 pb-5">
               <Button
                 className="w-full gap-2"
                 disabled={!dateValid}
@@ -401,11 +419,11 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
 
             <div
               className={cn(
-                "flex-1 min-h-0 transition-opacity duration-500",
+                "flex-1 min-h-0 flex flex-col transition-opacity duration-500",
                 revealIn ? "opacity-100" : "opacity-0"
               )}
             >
-              <PlanningView hideTabs readOnly />
+              <RevealGrid dateFrom={dateFrom} dateTo={dateTo} />
             </div>
 
             <div

@@ -1,35 +1,49 @@
 import type { Employee, Shift, ShiftType } from "@/types/planning";
 
 export const employees: Employee[] = [
-  { id: "1", name: "Marie Dupont",    role: "chef_cuisine" },
-  { id: "2", name: "Thomas Laurent",  role: "chef_partie"  },
-  { id: "3", name: "Julie Martin",    role: "serveur"      },
-  { id: "4", name: "Lucas Bernard",   role: "serveur"      },
-  { id: "5", name: "Emma Petit",      role: "barman"       },
-  { id: "6", name: "Nicolas Roux",    role: "plongeur"     },
+  // Cuisine (4)
+  { id: "1",  name: "Marie Dupont",     role: "chef_cuisine" },
+  { id: "2",  name: "Thomas Laurent",   role: "chef_partie"  },
+  { id: "7",  name: "Sophie Moreau",    role: "chef_cuisine" },
+  { id: "8",  name: "Antoine Lefèvre",  role: "chef_partie"  },
+  // Salle (5)
+  { id: "3",  name: "Julie Martin",     role: "serveur"      },
+  { id: "4",  name: "Lucas Bernard",    role: "serveur"      },
+  { id: "10", name: "Camille Blanc",    role: "serveur"      },
+  { id: "11", name: "Hugo Dubois",      role: "serveur"      },
+  { id: "15", name: "Inès Fontaine",    role: "serveur"      },
+  // Bar (3)
+  { id: "5",  name: "Emma Petit",       role: "barman"       },
+  { id: "12", name: "Léa Simon",        role: "barman"       },
+  { id: "13", name: "Maxime Durand",    role: "barman"       },
+  // Plonge (3)
+  { id: "6",  name: "Nicolas Roux",     role: "plongeur"     },
+  { id: "14", name: "Kevin Martin",     role: "plongeur"     },
+  { id: "16", name: "Yasmine Chabane",  role: "plongeur"     },
 ];
 
-// Règles respectées :
-//  • max 35h/sem  (matin=8h, soir=8h, coupure=13h)
-//  • repos ≥ 11h entre deux shifts (soir→matin interdit, soir/coupure→coupure ok ≥11h)
-//  • max 3 jours consécutifs
-//  • chaque service : 0 ou ≥ 2 personnes (matin/soir), 0 ou ≥ 1 (coupure)
-//
-// Couverture résultante :
-//  Lun : matin=[1,6], soir=[2,4]
-//  Mar : matin=[1,3], soir=[2,4]
-//  Mer : matin=[3,6], soir=[2,5]
-//  Jeu : matin=[1,6], soir=[4,5]
-//  Ven : matin=[1,3], soir=[2,4]
-//  Sam : matin=[3,6], coupure=[5]   (repos soir — service allégé)
-//  Dim : repos (restaurant fermé)
+// Patterns semaine (Lun→Dim).
+// Contraintes : soir→matin interdit (gap < 11h), max 3 jours consécutifs, max ~35h
 const WEEK_PATTERNS: Record<string, ShiftType[]> = {
-  "1": ["matin",   "matin",   "repos",   "matin",   "matin",   "repos",   "repos"],
-  "2": ["soir",    "soir",    "soir",    "repos",   "soir",    "repos",   "repos"],
-  "3": ["repos",   "matin",   "matin",   "repos",   "matin",   "matin",   "repos"],
-  "4": ["soir",    "soir",    "repos",   "soir",    "soir",    "repos",   "repos"],
-  "5": ["repos",   "repos",   "soir",    "soir",    "repos",   "coupure", "repos"],
-  "6": ["matin",   "repos",   "matin",   "matin",   "repos",   "matin",   "repos"],
+  // Cuisine
+  "1":  ["matin",   "matin",   "repos",   "matin",   "matin",   "repos",   "repos"],
+  "2":  ["soir",    "soir",    "soir",    "repos",   "soir",    "repos",   "repos"],
+  "7":  ["repos",   "matin",   "matin",   "matin",   "repos",   "matin",   "repos"],
+  "8":  ["soir",    "repos",   "soir",    "soir",    "soir",    "repos",   "repos"],
+  // Salle
+  "3":  ["repos",   "matin",   "matin",   "repos",   "matin",   "matin",   "repos"],
+  "4":  ["soir",    "soir",    "repos",   "soir",    "soir",    "repos",   "repos"],
+  "10": ["matin",   "repos",   "matin",   "matin",   "repos",   "coupure", "repos"],
+  "11": ["soir",    "soir",    "repos",   "soir",    "soir",    "soir",    "repos"],
+  "15": ["repos",   "repos",   "coupure", "repos",   "coupure", "matin",   "repos"],
+  // Bar
+  "5":  ["repos",   "repos",   "soir",    "soir",    "repos",   "coupure", "repos"],
+  "12": ["matin",   "matin",   "matin",   "repos",   "matin",   "repos",   "repos"],
+  "13": ["repos",   "soir",    "soir",    "soir",    "repos",   "soir",    "repos"],
+  // Plonge
+  "6":  ["matin",   "repos",   "matin",   "matin",   "repos",   "matin",   "repos"],
+  "14": ["soir",    "repos",   "matin",   "repos",   "soir",    "matin",   "repos"],
+  "16": ["repos",   "matin",   "repos",   "soir",    "matin",   "repos",   "repos"],
 };
 
 const SHIFT_TIMES: Record<ShiftType, { start: string; end: string }> = {
