@@ -163,7 +163,7 @@ const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: st
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export function PlanningView({ onPublished, hideTabs = false, hideNav = false, hideStatus = false, hideAlerts = false, readOnly = false, showNames = false }: {
+export function PlanningView({ onPublished, hideTabs = false, hideNav = false, hideStatus = false, hideAlerts = false, readOnly = false, showNames = false, weekStart: weekStartProp }: {
   onPublished?: (count: number) => void;
   hideTabs?: boolean;
   hideNav?: boolean;
@@ -171,6 +171,7 @@ export function PlanningView({ onPublished, hideTabs = false, hideNav = false, h
   hideAlerts?: boolean;
   readOnly?: boolean;
   showNames?: boolean;
+  weekStart?: string;
 } = {}) {
   const [activeTab, setActiveTab]   = useState<"planning" | "criteres">("planning");
   const [viewMode, setViewMode]     = useState<"semaine" | "jour">("semaine");
@@ -186,7 +187,15 @@ export function PlanningView({ onPublished, hideTabs = false, hideNav = false, h
     () => new Set(employees.map((e) => e.id))
   );
 
-  const weekStart = useMemo(() => addDays(getWeekStart(new Date()), weekOffset * 7), [weekOffset]);
+  const baseWeekStart = useMemo(() => {
+    if (weekStartProp) {
+      const [y, m, d] = weekStartProp.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return getWeekStart(new Date());
+  }, [weekStartProp]);
+
+  const weekStart = useMemo(() => addDays(baseWeekStart, weekOffset * 7), [baseWeekStart, weekOffset]);
   const selectedDay     = useMemo(() => addDays(new Date(), dayOffset), [dayOffset]);
   const selectedDayYMD  = toYMD(selectedDay);
   const selectedDayLabel = `${DAY_LONG[selectedDay.getDay()]} ${selectedDay.getDate()} ${MONTH_SHORT[selectedDay.getMonth()]}`;

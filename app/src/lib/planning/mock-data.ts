@@ -33,11 +33,11 @@ const WEEK_PATTERNS: Record<string, ShiftType[]> = {
   // Salle
   "3":  ["repos",   "matin",   "matin",   "repos",   "matin",   "matin",   "repos"],
   "4":  ["soir",    "soir",    "repos",   "soir",    "soir",    "repos",   "repos"],
-  "10": ["matin",   "repos",   "matin",   "matin",   "repos",   "coupure", "repos"],
+  "10": ["matin",   "repos",   "matin",   "matin",   "repos",   "midi",    "repos"],
   "11": ["soir",    "soir",    "repos",   "soir",    "soir",    "soir",    "repos"],
-  "15": ["repos",   "repos",   "coupure", "repos",   "coupure", "matin",   "repos"],
+  "15": ["repos",   "repos",   "matin",   "repos",   "soir",    "matin",   "repos"],
   // Bar
-  "5":  ["repos",   "repos",   "soir",    "soir",    "repos",   "coupure", "repos"],
+  "5":  ["repos",   "repos",   "soir",    "soir",    "repos",   "midi",    "repos"],
   "12": ["matin",   "matin",   "matin",   "repos",   "matin",   "repos",   "repos"],
   "13": ["repos",   "soir",    "soir",    "soir",    "repos",   "soir",    "repos"],
   // Plonge
@@ -49,6 +49,7 @@ const WEEK_PATTERNS: Record<string, ShiftType[]> = {
 const SHIFT_TIMES: Record<ShiftType, { start: string; end: string }> = {
   matin:   { start: "07:00", end: "15:00" },
   soir:    { start: "15:00", end: "23:00" },
+  midi:    { start: "11:00", end: "19:00" },
   coupure: { start: "10:00", end: "23:00" },
   repos:   { start: "",      end: ""      },
 };

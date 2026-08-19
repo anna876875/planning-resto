@@ -1,5 +1,5 @@
 export type Role = "chef_cuisine" | "chef_partie" | "serveur" | "barman" | "plongeur";
-export type ShiftType = "matin" | "soir" | "coupure" | "repos";
+export type ShiftType = "matin" | "midi" | "soir" | "coupure" | "repos";
 
 export interface Employee {
   id: string;

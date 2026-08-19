@@ -4,20 +4,24 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
 
+// ─── Config ──────────────────────────────────────────────────────────────────
+
 const DAY_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
+const SERVICES = [
+  { key: "matin", label: "Matin", start: "07h", hours: "07:00 – 15:00", text: "text-sky-800",    dot: "bg-sky-500",    rowBg: "bg-sky-50/40"    },
+  { key: "midi",  label: "Midi",  start: "11h", hours: "11:00 – 19:00", text: "text-teal-800",   dot: "bg-teal-500",   rowBg: "bg-teal-50/40"   },
+  { key: "soir",  label: "Soir",  start: "15h", hours: "15:00 – 23:00", text: "text-violet-800", dot: "bg-violet-500", rowBg: "bg-violet-50/40" },
+] as const;
+
 const DEPARTMENTS = [
-  { label: "Cuisine", roles: ["chef_cuisine", "chef_partie"], bg: "bg-orange-100/80", text: "text-orange-700" },
-  { label: "Salle",   roles: ["serveur"],                     bg: "bg-blue-100/80",   text: "text-blue-700"  },
-  { label: "Bar",     roles: ["barman"],                      bg: "bg-violet-100/80", text: "text-violet-700"},
-  { label: "Plonge",  roles: ["plongeur"],                    bg: "bg-slate-100/80",  text: "text-slate-500" },
+  { label: "Cuisine", roles: ["chef_cuisine", "chef_partie"], bg: "bg-orange-100", text: "text-orange-700" },
+  { label: "Salle",   roles: ["serveur"],                     bg: "bg-blue-100",   text: "text-blue-700"  },
+  { label: "Bar",     roles: ["barman"],                      bg: "bg-violet-100", text: "text-violet-700"},
+  { label: "Plonge",  roles: ["plongeur"],                    bg: "bg-slate-100",  text: "text-slate-600" },
 ];
 
-const SERVICES = [
-  { key: "matin",   label: "Matin",   text: "text-sky-800",    dot: "bg-sky-400",    cellBg: "bg-sky-50/60"    },
-  { key: "coupure", label: "Coupure", text: "text-amber-800",  dot: "bg-amber-400",  cellBg: "bg-amber-50/60"  },
-  { key: "soir",    label: "Soir",    text: "text-violet-800", dot: "bg-violet-400", cellBg: "bg-violet-50/60" },
-] as const;
+// ─── Utils ───────────────────────────────────────────────────────────────────
 
 function parseUTC(dateStr: string): Date {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -31,8 +35,10 @@ function getMondayOf(dateStr: string): string {
   return d.toISOString().split("T")[0];
 }
 
+// ─── Composant ───────────────────────────────────────────────────────────────
+
 export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
-  const days = useMemo(() => {
+  const allDays = useMemo(() => {
     const result: string[] = [];
     const end = parseUTC(dateTo).getTime();
     const cur = parseUTC(dateFrom);
@@ -44,54 +50,67 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
   }, [dateFrom, dateTo]);
 
   const shifts = useMemo(() => {
-    const mondays = [...new Set(days.map(getMondayOf))];
+    const mondays = [...new Set(allDays.map(getMondayOf))];
     return mondays.flatMap(wk => getShiftsForWeek(wk));
-  }, [days]);
+  }, [allDays]);
+
+  // Exclure les jours fermés (aucun employé ne travaille)
+  const days = useMemo(() =>
+    allDays.filter(d =>
+      employees.some(emp => shifts.some(s => s.employeeId === emp.id && s.date === d && s.type !== "repos"))
+    ),
+    [allDays, shifts]
+  );
+
+  const TH = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
+    <th className={cn("px-3 pb-2.5 pt-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground", className)}>
+      {children}
+    </th>
+  );
 
   return (
-    <div className="overflow-auto flex-1 min-h-0 px-5 py-4">
-      <table className="w-full text-xs border-separate border-spacing-0" style={{ minWidth: `${140 + days.length * 110}px` }}>
-
-        {/* ── En-tête jours ── */}
+    <div className="flex min-h-0 flex-1 overflow-auto">
+      <table
+        className="w-full border-collapse text-xs"
+        style={{ minWidth: `${200 + days.length * 120}px` }}
+      >
+        {/* ── En-têtes jours ── */}
         <thead>
-          <tr>
-            <th className="w-24 py-3 px-3 border-b border-border/40" />
+          <tr className="border-b border-border bg-card">
+            <TH className="w-44">Service</TH>
             {days.map(d => {
               const date = parseUTC(d);
-              const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
+              const isWeekend = date.getUTCDay() === 6 || date.getUTCDay() === 0;
               return (
-                <th key={d} className="text-center py-3 px-3 border-b border-border/40">
-                  <span className={cn("block text-[10px] font-medium uppercase tracking-wide", weekend ? "text-muted-foreground/60" : "text-muted-foreground")}>
-                    {DAY_SHORT[date.getUTCDay()]}
-                  </span>
-                  <span className={cn("block text-[15px] font-bold leading-tight", weekend ? "text-muted-foreground/70" : "text-foreground")}>
-                    {date.getUTCDate()}
-                  </span>
-                </th>
+                <TH key={d} className={cn("text-center", isWeekend && "opacity-60")}>
+                  <span className="block">{DAY_SHORT[date.getUTCDay()]}</span>
+                  <span className="block text-sm font-bold text-foreground leading-tight">{date.getUTCDate()}</span>
+                </TH>
               );
             })}
           </tr>
         </thead>
 
-        {/* ── Lignes : Matin / Coupure / Soir ── */}
+        {/* ── Lignes services ── */}
         <tbody>
           {SERVICES.map((svc, svcIdx) => (
-            <tr key={svc.key}>
-              {/* Label service */}
-              <td className={cn(
-                "py-4 px-3 align-top",
-                svcIdx < SERVICES.length - 1 && "border-b border-border/30"
-              )}>
-                <div className="flex items-center gap-1.5 mt-0.5">
+            <tr
+              key={svc.key}
+              className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}
+            >
+              {/* Colonne gauche — service + horaires */}
+              <td className={cn("px-3 py-4 align-top", svc.rowBg)}>
+                <div className="flex items-center gap-1.5 mb-0.5">
                   <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
-                  <span className={cn("font-semibold text-[11px] whitespace-nowrap", svc.text)}>{svc.label}</span>
+                  <span className={cn("font-bold text-sm", svc.text)}>{svc.label}</span>
                 </div>
+                <p className={cn("text-[11px] pl-3.5 opacity-60", svc.text)}>{svc.hours}</p>
               </td>
 
               {/* Cellule par jour */}
               {days.map(d => {
                 const date = parseUTC(d);
-                const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
+                const isWeekend = date.getUTCDay() === 6 || date.getUTCDay() === 0;
                 const working = employees.filter(emp =>
                   shifts.some(s => s.employeeId === emp.id && s.date === d && s.type === svc.key)
                 );
@@ -99,30 +118,37 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
                   <td
                     key={d}
                     className={cn(
-                      "py-4 px-3 align-top",
-                      svcIdx < SERVICES.length - 1 && "border-b border-border/30",
-                      working.length > 0 ? svc.cellBg : weekend ? "bg-muted/10" : ""
+                      "px-2 py-3 align-top",
+                      isWeekend ? "bg-muted/20" : "bg-background"
                     )}
                   >
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1">
                       {DEPARTMENTS.map(dept => {
                         const group = working.filter(emp =>
                           (dept.roles as readonly string[]).includes(emp.role)
                         );
                         if (!group.length) return null;
                         return (
-                          <div key={dept.label} className={cn("rounded-md px-2 py-1.5", dept.bg)}>
-                            <span className={cn("block text-[10px] font-semibold mb-0.5", dept.text)}>
+                          <div key={dept.label} className={cn("rounded px-1.5 py-1", dept.bg)}>
+                            <span className={cn("block text-[9px] font-bold uppercase tracking-wide mb-0.5 opacity-70", dept.text)}>
                               {dept.label}
                             </span>
                             {group.map(emp => (
-                              <span key={emp.id} className={cn("block text-[11px] leading-snug whitespace-nowrap", dept.text)}>
-                                {emp.name.split(" ")[0]}
+                              <span key={emp.id} className="flex items-center gap-1">
+                                <span className={cn("text-[11px] font-medium leading-snug whitespace-nowrap", dept.text)}>
+                                  {emp.name.split(" ")[0]}
+                                </span>
+                                <span className="text-[9px] font-semibold opacity-50 tabular-nums">
+                                  {svc.start}
+                                </span>
                               </span>
                             ))}
                           </div>
                         );
                       })}
+                      {working.length === 0 && (
+                        <span className="text-muted-foreground/30 text-[10px]">—</span>
+                      )}
                     </div>
                   </td>
                 );
