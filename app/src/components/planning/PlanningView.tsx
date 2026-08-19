@@ -21,7 +21,9 @@ function getWeekStart(d: Date) {
   r.setDate(r.getDate() - (day === 0 ? 6 : day - 1)); r.setHours(0, 0, 0, 0); return r;
 }
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
-function toYMD(d: Date) { return d.toISOString().split("T")[0]; }
+function toYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 function parseMin(t: string) { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + m; }
 function duration(s: Shift) {
   if (s.type === "repos" || !s.start || !s.end) return 0;
@@ -29,7 +31,15 @@ function duration(s: Shift) {
 }
 
 const DAY_SHORT   = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const DAY_LONG    = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
 const MONTH_SHORT = ["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
+
+const DEPARTMENTS = [
+  { label: "Cuisine", roles: ["chef_cuisine","chef_partie"], bg: "bg-orange-100/80", text: "text-orange-700" },
+  { label: "Salle",   roles: ["serveur"],                    bg: "bg-blue-100/80",   text: "text-blue-700"  },
+  { label: "Bar",     roles: ["barman"],                     bg: "bg-violet-100/80", text: "text-violet-700"},
+  { label: "Plonge",  roles: ["plongeur"],                   bg: "bg-slate-100/80",  text: "text-slate-500" },
+];
 
 // ─── Infobulle simple ─────────────────────────────────────────────────────────
 
@@ -160,7 +170,9 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
   showNames?: boolean;
 } = {}) {
   const [activeTab, setActiveTab]   = useState<"planning" | "criteres">("planning");
+  const [viewMode, setViewMode]     = useState<"semaine" | "jour">("semaine");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [dayOffset,  setDayOffset]  = useState(0);
   const [shiftsMap, setShiftsMap]   = useState<Record<string, Shift[]>>({});
   const [status, setStatus]         = useState<PlanningStatus>("brouillon");
   const [published, setPublished]   = useState<PlanningStatus | null>(null);
@@ -172,6 +184,10 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
   );
 
   const weekStart = useMemo(() => addDays(getWeekStart(new Date()), weekOffset * 7), [weekOffset]);
+  const selectedDay     = useMemo(() => addDays(new Date(), dayOffset), [dayOffset]);
+  const selectedDayYMD  = toYMD(selectedDay);
+  const selectedDayLabel = `${DAY_LONG[selectedDay.getDay()]} ${selectedDay.getDate()} ${MONTH_SHORT[selectedDay.getMonth()]}`;
+  const selectedWeekKey = useMemo(() => toYMD(getWeekStart(selectedDay)), [selectedDay]);
   const weekKey   = toYMD(weekStart);
   const weekDays  = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const weekEnd   = weekDays[6];
@@ -184,6 +200,10 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
     : `${weekStart.getDate()} ${sm} – ${weekEnd.getDate()} ${em} ${weekEnd.getFullYear()}`;
 
   const shifts: Shift[] = useMemo(() => shiftsMap[weekKey] ?? getShiftsForWeek(weekKey), [shiftsMap, weekKey]);
+  const selectedDayShifts = useMemo(() => {
+    const w = shiftsMap[selectedWeekKey] ?? getShiftsForWeek(selectedWeekKey);
+    return w.filter(s => s.date === selectedDayYMD);
+  }, [shiftsMap, selectedWeekKey, selectedDayYMD]);
   const { all: allConflicts, byEmpMsg, byDay } = useMemo(() => detect(shifts, weekDays), [shifts, weekDays]);
 
   const grid = useMemo(() =>
@@ -270,16 +290,34 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
           {sc.label}
         </div>
 
-        {/* Navigation semaine */}
+        {/* Navigation + toggle vue */}
         <div className="flex flex-1 items-center justify-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWeekOffset((w) => w - 1)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7"
+            onClick={() => viewMode === "semaine" ? setWeekOffset(w => w - 1) : setDayOffset(d => d - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-44 text-center text-sm font-semibold">{weekLabel}</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWeekOffset((w) => w + 1)}>
+          <span className="min-w-44 text-center text-sm font-semibold">
+            {viewMode === "semaine" ? weekLabel : selectedDayLabel}
+          </span>
+          <Button variant="ghost" size="icon" className="h-7 w-7"
+            onClick={() => viewMode === "semaine" ? setWeekOffset(w => w + 1) : setDayOffset(d => d + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setWeekOffset(0)}>Auj.</Button>
+          <Button variant="ghost" size="sm" className="h-7 text-xs"
+            onClick={() => viewMode === "semaine" ? setWeekOffset(0) : setDayOffset(0)}>
+            Auj.
+          </Button>
+          <div className="ml-2 flex overflow-hidden rounded-md border border-border">
+            {(["semaine", "jour"] as const).map(mode => (
+              <button key={mode} type="button" onClick={() => setViewMode(mode)}
+                className={cn(
+                  "px-2.5 py-1 text-[11px] font-medium transition-colors",
+                  viewMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                )}>
+                {mode === "semaine" ? "Sem." : "Jour"}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* CTA droite */}
@@ -431,7 +469,53 @@ export function PlanningView({ onPublished, hideTabs = false, readOnly = false, 
           </div>
         </div>
       )}
-      {activeTab === "planning" && (
+      {/* ── Vue quotidienne ─────────────────────────────────────── */}
+      {activeTab === "planning" && viewMode === "jour" && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {SERVICE_ROWS.map(svc => {
+            const working = employees.filter(emp =>
+              selectedDayShifts.some(s => s.employeeId === emp.id && s.type === svc.type)
+            );
+            return (
+              <div key={svc.type} className="rounded-xl border border-border overflow-hidden">
+                <div className={cn("flex items-center gap-2 px-4 py-2.5", svc.chip)}>
+                  <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
+                  <span className={cn("text-sm font-semibold", svc.text)}>{svc.label}</span>
+                  <span className={cn("text-[11px] opacity-60", svc.text)}>{svc.hours}</span>
+                  <span className={cn("ml-auto text-[11px] font-medium opacity-70", svc.text)}>
+                    {working.length} pers.
+                  </span>
+                </div>
+                {working.length === 0 ? (
+                  <p className="px-4 py-3 text-xs text-muted-foreground italic">Aucun service</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 p-3 bg-background">
+                    {DEPARTMENTS.map(dept => {
+                      const group = working.filter(emp =>
+                        (dept.roles as readonly string[]).includes(emp.role)
+                      );
+                      if (!group.length) return null;
+                      return (
+                        <div key={dept.label} className={cn("rounded-lg px-3 py-2 min-w-[120px]", dept.bg)}>
+                          <p className={cn("text-[10px] font-semibold mb-1", dept.text)}>{dept.label}</p>
+                          {group.map(emp => (
+                            <p key={emp.id} className={cn("text-[12px] font-medium leading-snug", dept.text)}>
+                              {emp.name.split(" ")[0]}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Vue hebdomadaire ─────────────────────────────────────── */}
+      {activeTab === "planning" && viewMode === "semaine" && (
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <table className="w-full table-fixed border-collapse">
             <colgroup>
