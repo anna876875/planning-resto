@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { X, Check, Loader2, Sparkles, Users, Clock, CalendarX } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { X, Check, Loader2, Sparkles, Users, Clock, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { generateWeekSchedule, type GenerationResult } from "@/lib/planning/generator";
+import { loadConfig } from "@/lib/planning/config";
+import { employees } from "@/lib/planning/mock-data";
+import type { Shift } from "@/types/planning";
 
 const RevealGrid = dynamic(() => import("./RevealGrid"), { ssr: false });
 
@@ -20,7 +24,7 @@ function toISO(d: Date): string {
 
 function getNextMonday(): Date {
   const d = new Date();
-  const day = d.getDay(); // 0=dim, 1=lun…
+  const day = d.getDay();
   const diff = day === 0 ? 1 : 8 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
@@ -33,6 +37,26 @@ function addDays(d: Date, n: number) {
   return r;
 }
 
+function getMondayOf(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  const dow = dt.getUTCDay();
+  dt.setUTCDate(dt.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return dt.toISOString().split("T")[0];
+}
+
+function getMondaysInRange(from: string, to: string): string[] {
+  const mondays = new Set<string>();
+  const [y, m, d] = from.split("-").map(Number);
+  const cur = new Date(Date.UTC(y, m - 1, d));
+  const end = new Date(to + "T00:00:00Z");
+  while (cur <= end) {
+    mondays.add(getMondayOf(cur.toISOString().split("T")[0]));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return [...mondays];
+}
+
 const MOIS_COURT = ["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
 
 function formatDate(iso: string) {
@@ -40,28 +64,7 @@ function formatDate(iso: string) {
   return `${d.getDate()} ${MOIS_COURT[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-/* ── recap data ─────────────────────────────────────────────── */
-
-const RECAP_CARDS = [
-  {
-    icon: Users,
-    value: "5 / 6",
-    label: "Effectif disponible",
-    sub: "Nicolas en arrêt maladie",
-  },
-  {
-    icon: Clock,
-    value: "Ven · Sam · Dim",
-    label: "Heures de pointe",
-    sub: "Créneaux à fort volume",
-  },
-  {
-    icon: CalendarX,
-    value: "1 indisponibilité",
-    label: "Posée sur la période",
-    sub: "Julie · 25 août",
-  },
-];
+/* ── étapes de génération ───────────────────────────────────── */
 
 const STEPS = [
   "Analyse des disponibilités",
@@ -84,43 +87,67 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
   const [dateTo, setDateTo]             = useState(toISO(nextSun));
   const [activeShortcut, setActiveShortcut] = useState<string>("La semaine prochaine");
   const [showCustom, setShowCustom]     = useState(false);
-  const [visibleCount, setVisibleCount] = useState(0);
-  const [loadingStep,  setLoadingStep]  = useState(0);
-  const [revealIn,     setRevealIn]     = useState(false);
+  const [loadingStep, setLoadingStep]   = useState(0);
+  const [revealIn, setRevealIn]         = useState(false);
 
-  /* stagger recap cards */
+  const [generatedShifts, setGeneratedShifts] = useState<Shift[]>([]);
+  const [genResult, setGenResult]             = useState<GenerationResult | null>(null);
+  const generationDoneRef = useRef(false);
+
+  /* analyse → génération */
   useEffect(() => {
-    if (phase !== "analyse" || visibleCount >= RECAP_CARDS.length) return;
-    const t = setTimeout(() => setVisibleCount(c => c + 1), 380);
+    if (phase !== "analyse") return;
+    const t = setTimeout(() => { setLoadingStep(0); setPhase("generation"); }, 900);
     return () => clearTimeout(t);
-  }, [phase, visibleCount]);
+  }, [phase]);
 
-  /* auto-advance analyse → generation */
-  useEffect(() => {
-    if (phase !== "analyse" || visibleCount < RECAP_CARDS.length) return;
-    const t = setTimeout(() => { setLoadingStep(0); setPhase("generation"); }, 1600);
-    return () => clearTimeout(t);
-  }, [phase, visibleCount]);
-
-  /* auto-advance generation steps */
+  /* étapes de génération */
   useEffect(() => {
     if (phase !== "generation") return;
+
     if (loadingStep >= STEPS.length) {
-      const t = setTimeout(() => setPhase("reveal"), 650);
+      const t = setTimeout(() => setPhase("reveal"), 500);
       return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setLoadingStep(s => s + 1), 900);
-    return () => clearTimeout(t);
-  }, [phase, loadingStep]);
 
-  /* fade-in planning après expansion modale */
+    // Lancer la vraie génération à mi-parcours
+    if (loadingStep === 2 && !generationDoneRef.current) {
+      generationDoneRef.current = true;
+      const cfg     = loadConfig();
+      const mondays = getMondaysInRange(dateFrom, dateTo);
+      const allShifts: Shift[] = [];
+      const allWarnings: string[] = [];
+      let lastResult: GenerationResult | null = null;
+      let totalHeures = 0;
+
+      for (const monday of mondays) {
+        const result = generateWeekSchedule(monday, employees, cfg);
+        allShifts.push(...result.shifts);
+        allWarnings.push(...result.warnings);
+        totalHeures += result.stats.heuresTotal;
+        lastResult = result;
+      }
+
+      const mergedResult: GenerationResult | null = lastResult
+        ? { ...lastResult, shifts: allShifts, warnings: allWarnings, stats: { ...lastResult.stats, heuresTotal: totalHeures } }
+        : null;
+
+      setGeneratedShifts(allShifts);
+      setGenResult(mergedResult);
+    }
+
+    const t = setTimeout(() => setLoadingStep(s => s + 1), 800);
+    return () => clearTimeout(t);
+  }, [phase, loadingStep, dateFrom, dateTo]);
+
+  /* fade-in */
   useEffect(() => {
     if (phase !== "reveal") { setRevealIn(false); return; }
     const t = setTimeout(() => setRevealIn(true), 300);
     return () => clearTimeout(t);
   }, [phase]);
 
-  /* escape key */
+  /* escape */
   const handleEsc = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onClose();
   }, [onClose]);
@@ -129,31 +156,25 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", handleEsc);
   }, [handleEsc]);
 
-  const progress   = Math.round((loadingStep / STEPS.length) * 100);
+  const progress    = Math.round((loadingStep / STEPS.length) * 100);
   const periodLabel = dateFrom && dateTo
     ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}`
     : "Période non définie";
+  const dateValid   = dateFrom && dateTo && dateFrom <= dateTo;
 
-  const dateValid = dateFrom && dateTo && dateFrom <= dateTo;
-
-  /* synchro dateFrom/dateTo : si from > to, ajuste to */
   function handleFromChange(val: string) {
     setActiveShortcut("Date personnalisée");
     setDateFrom(val);
     if (dateTo && val > dateTo) {
-      const from = new Date(val + "T00:00:00");
-      setDateTo(toISO(addDays(from, 6)));
+      setDateTo(toISO(addDays(new Date(val + "T00:00:00"), 6)));
     }
-  }
-
-  function handleToChange(val: string) {
-    setActiveShortcut("Date personnalisée");
-    setDateTo(val);
   }
 
   function handleLaunch() {
     if (!dateValid) return;
-    setVisibleCount(0);
+    generationDoneRef.current = false;
+    setGenResult(null);
+    setGeneratedShifts([]);
     setPhase("analyse");
   }
 
@@ -174,7 +195,6 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 0 — PÉRIODE  ═══════════════ */}
         {phase === "periode" && (
           <>
-            {/* Header avec titre + séparateur */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h2 className="text-base font-semibold tracking-tight">Générer le planning</h2>
               <button
@@ -186,12 +206,10 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="px-5 py-5 space-y-4">
-              {/* Sous-titre */}
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 Choisir la période
               </p>
 
-              {/* Grille 2×2 : 3 raccourcis + date personnalisée */}
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: "La semaine prochaine", fn: () => {
@@ -234,7 +252,6 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                 })}
               </div>
 
-              {/* Champs de dates — visibles uniquement si "Date personnalisée" */}
               {showCustom && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -245,10 +262,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                       type="date"
                       value={dateFrom}
                       onChange={e => handleFromChange(e.target.value)}
-                      className={cn(
-                        "w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all",
-                        activeShortcut === "Date personnalisée" ? "text-foreground" : "text-muted-foreground"
-                      )}
+                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -259,17 +273,13 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                       type="date"
                       value={dateTo}
                       min={dateFrom}
-                      onChange={e => handleToChange(e.target.value)}
-                      className={cn(
-                        "w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all",
-                        activeShortcut === "Date personnalisée" ? "text-foreground" : "text-muted-foreground"
-                      )}
+                      onChange={e => setDateTo(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                     />
                   </div>
                 </div>
               )}
 
-              {/* Récap phrase italique */}
               {dateValid && (
                 <p className="text-[12px] italic text-muted-foreground">
                   Le planning couvrira{" "}
@@ -280,11 +290,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
             </div>
 
             <div className="px-5 pb-5">
-              <Button
-                className="w-full gap-2"
-                disabled={!dateValid}
-                onClick={handleLaunch}
-              >
+              <Button className="w-full gap-2" disabled={!dateValid} onClick={handleLaunch}>
                 <Sparkles className="h-4 w-4" />
                 Analyser et générer
               </Button>
@@ -305,40 +311,13 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                   <p className="text-[11px] text-muted-foreground">{periodLabel}</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
-              >
+              <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
-
-            <div className="px-5 py-6 space-y-3">
-              {RECAP_CARDS.map((card, i) => {
-                const Icon  = card.icon;
-                const shown = i < visibleCount;
-                return (
-                  <div
-                    key={card.label}
-                    className={cn(
-                      "flex items-center gap-4 rounded-xl border border-border px-4 py-3.5",
-                      "transition-all duration-400 ease-out",
-                      shown
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-4 pointer-events-none"
-                    )}
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{card.value}</p>
-                      <p className="text-[11px] text-muted-foreground">{card.label}</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground text-right shrink-0">{card.sub}</p>
-                  </div>
-                );
-              })}
+            <div className="px-5 py-8 flex flex-col items-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Lecture de la configuration…</p>
             </div>
           </>
         )}
@@ -405,30 +384,72 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {phase === "reveal" && (
           <>
             <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
                   <Check className="h-4 w-4 text-emerald-600" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold">Planning généré !</p>
                   <p className="text-[11px] text-muted-foreground">{periodLabel}</p>
                 </div>
+                {genResult && (
+                  <div className="flex items-center gap-3 ml-2 text-[11px] text-muted-foreground shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {genResult.stats.totalEmployes} employés
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {genResult.stats.heuresTotal}h
+                    </span>
+                    {genResult.warnings.length > 0 && (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        {genResult.warnings.length} alerte{genResult.warnings.length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <button
                 onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted transition-colors ml-2"
               >
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
 
+            {genResult && genResult.warnings.length > 0 && (
+              <div className="shrink-0 px-5 pt-3">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-[11px] font-medium text-amber-800 mb-1">
+                    {genResult.warnings.length} contrainte{genResult.warnings.length > 1 ? "s" : ""} non respectée{genResult.warnings.length > 1 ? "s" : ""}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {genResult.warnings.slice(0, 3).map((w, i) => (
+                      <li key={i} className="text-[10px] text-amber-700">· {w}</li>
+                    ))}
+                    {genResult.warnings.length > 3 && (
+                      <li className="text-[10px] text-amber-600 italic">
+                        +{genResult.warnings.length - 3} autres…
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div
               className={cn(
-                "flex-1 min-h-0 flex flex-col transition-opacity duration-500",
+                "flex-1 min-h-0 flex flex-col transition-opacity duration-500 mt-2",
                 revealIn ? "opacity-100" : "opacity-0"
               )}
             >
-              <RevealGrid dateFrom={dateFrom} dateTo={dateTo} />
+              <RevealGrid
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                shifts={generatedShifts.length > 0 ? generatedShifts : undefined}
+              />
             </div>
 
             <div

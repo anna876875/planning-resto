@@ -264,6 +264,7 @@ export default function ParametresPage() {
         <div className="flex flex-col">
           <p className="mb-4 text-[11px] text-muted-foreground">Effectifs cibles et règles de repos pour la génération du planning.</p>
 
+          {/* Effectifs globaux */}
           <Row
             label="Effectif — période stable"
             hint="Lun – Jeu · activité régulière"
@@ -286,6 +287,42 @@ export default function ParametresPage() {
             <NumberInput value={cfg.effectifs.affluence} onChange={v => update({ effectifs: { ...cfg.effectifs, affluence: v } })} />
           </Row>
 
+          {/* Effectifs par service */}
+          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Effectifs cibles par service
+          </p>
+          {(["ouverture", "midi", "soir"] as const).map(svc => (
+            <Row
+              key={`eps-${svc}`}
+              label={SVC_LABELS[svc]}
+              hint="Nombre de personnes minimum pour ce service"
+              value={`${cfg.effectifsParService[svc]} personnes`}
+              editing={is(`eps-${svc}`)}
+              onEdit={() => setEditing(`eps-${svc}`)}
+              onDone={() => done(`eps-${svc}`)}
+            >
+              <NumberInput
+                value={cfg.effectifsParService[svc]}
+                min={1}
+                max={20}
+                onChange={v => update({ effectifsParService: { ...cfg.effectifsParService, [svc]: v } })}
+              />
+            </Row>
+          ))}
+
+          {/* Règles de repos */}
+          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Règles de repos
+          </p>
+
+          <div className="flex items-center justify-between border-b border-border/40 py-4">
+            <div>
+              <p className="text-[13px] font-medium">Répartition équitable des weekends</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Alterne les week-ends travaillés entre employés.</p>
+            </div>
+            <Toggle checked={cfg.weekendEquitable} onChange={v => toggleBoolean("weekendEquitable", v)} />
+          </div>
+
           <div className="flex items-center justify-between border-b border-border/40 py-4">
             <div>
               <p className="text-[13px] font-medium">Répartition équitable des repos</p>
@@ -296,13 +333,64 @@ export default function ParametresPage() {
 
           <Row
             label="Repos consécutifs max"
-            hint="Nombre de jours de repos d'affilée autorisés. Différent des congés payés."
+            hint="Jours de repos d'affilée autorisés — différent des congés payés."
             value={`${cfg.reposConsecutifsMax} jour${cfg.reposConsecutifsMax > 1 ? "s" : ""} max`}
             editing={is("reposMax")}
             onEdit={() => setEditing("reposMax")}
             onDone={() => done("reposMax")}
           >
             <NumberInput value={cfg.reposConsecutifsMax} min={1} max={7} onChange={v => update({ reposConsecutifsMax: v })} />
+          </Row>
+
+          <Row
+            label="Jours de repos / semaine"
+            hint="Minimum légal : 1 jour. Recommandé : 2 jours."
+            value={`${cfg.joursReposParSemaine} jour${cfg.joursReposParSemaine > 1 ? "s" : ""} / semaine`}
+            editing={is("joursRepos")}
+            onEdit={() => setEditing("joursRepos")}
+            onDone={() => done("joursRepos")}
+          >
+            <NumberInput value={cfg.joursReposParSemaine} min={1} max={3} onChange={v => update({ joursReposParSemaine: v })} />
+          </Row>
+
+          {/* Contraintes légales */}
+          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            Contraintes légales
+          </p>
+
+          <Row
+            label="Repos entre deux services"
+            hint="Droit du travail FR : 11h minimum entre la fin d'un service et le début du suivant."
+            value={`${cfg.reposEntreServicesH}h minimum`}
+            editing={is("reposH")}
+            onEdit={() => setEditing("reposH")}
+            onDone={() => done("reposH")}
+          >
+            <NumberInput value={cfg.reposEntreServicesH} min={8} max={16} onChange={v => update({ reposEntreServicesH: v })} />
+            <span className="text-xs text-muted-foreground">heures</span>
+          </Row>
+
+          <Row
+            label="Jours consécutifs max"
+            hint="Droit du travail FR : 6 jours maximum sans repos."
+            value={`${cfg.joursConsecutifsMax} jours max`}
+            editing={is("joursConsec")}
+            onEdit={() => setEditing("joursConsec")}
+            onDone={() => done("joursConsec")}
+          >
+            <NumberInput value={cfg.joursConsecutifsMax} min={3} max={6} onChange={v => update({ joursConsecutifsMax: v })} />
+          </Row>
+
+          <Row
+            label="Heures contrat / semaine"
+            hint="Heures hebdomadaires contractuelles. Utilisées pour calculer le nombre de jours travaillés."
+            value={`${cfg.heuresContratHebdo}h / semaine`}
+            editing={is("heuresHebdo")}
+            onEdit={() => setEditing("heuresHebdo")}
+            onDone={() => done("heuresHebdo")}
+          >
+            <NumberInput value={cfg.heuresContratHebdo} min={20} max={48} onChange={v => update({ heuresContratHebdo: v })} />
+            <span className="text-xs text-muted-foreground">heures</span>
           </Row>
         </div>
       )}

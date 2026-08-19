@@ -37,7 +37,13 @@ function getMondayOf(dateStr: string): string {
 
 // ─── Composant ───────────────────────────────────────────────────────────────
 
-export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+import type { Shift } from "@/types/planning";
+
+export default function RevealGrid({
+  dateFrom, dateTo, shifts: shiftsProp,
+}: {
+  dateFrom: string; dateTo: string; shifts?: Shift[];
+}) {
   const allDays = useMemo(() => {
     const result: string[] = [];
     const end = parseUTC(dateTo).getTime();
@@ -50,9 +56,10 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
   }, [dateFrom, dateTo]);
 
   const shifts = useMemo(() => {
+    if (shiftsProp) return shiftsProp;
     const mondays = [...new Set(allDays.map(getMondayOf))];
     return mondays.flatMap(wk => getShiftsForWeek(wk));
-  }, [allDays]);
+  }, [allDays, shiftsProp]);
 
   const days = useMemo(() =>
     allDays.filter(d =>
