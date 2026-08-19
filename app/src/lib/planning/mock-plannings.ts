@@ -1,12 +1,13 @@
 export interface PlanningRecord {
   id: string;
   nom: string;
-  semaine: string; // "S32 2026"
-  dateDebut: string; // "2026-08-03"
-  dateFin: string; // "2026-08-09"
+  semaine: string;
+  dateDebut: string;
+  dateFin: string;
   statut: "actif" | "archivé" | "brouillon";
   nbEmployes: number;
   nbTurns: number;
+  modifications: number;
 }
 
 export const mockPlannings: PlanningRecord[] = [
@@ -19,6 +20,7 @@ export const mockPlannings: PlanningRecord[] = [
     statut: "actif",
     nbEmployes: 6,
     nbTurns: 36,
+    modifications: 0,
   },
   {
     id: "p-2",
@@ -29,6 +31,7 @@ export const mockPlannings: PlanningRecord[] = [
     statut: "archivé",
     nbEmployes: 6,
     nbTurns: 34,
+    modifications: 3,
   },
   {
     id: "p-3",
@@ -39,6 +42,7 @@ export const mockPlannings: PlanningRecord[] = [
     statut: "archivé",
     nbEmployes: 5,
     nbTurns: 30,
+    modifications: 0,
   },
   {
     id: "p-4",
@@ -49,5 +53,6 @@ export const mockPlannings: PlanningRecord[] = [
     statut: "archivé",
     nbEmployes: 6,
     nbTurns: 38,
+    modifications: 1,
   },
 ];

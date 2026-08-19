@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, CalendarDays, ChevronRight, X, NotebookPen, CheckCircle2, Search, Sparkles } from "lucide-react";
+import { Clock, Users, CalendarDays, ChevronRight, X, NotebookPen, CheckCircle2, Sparkles, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlanningView } from "@/components/planning/PlanningView";
 import { GeneratePlanningModal } from "@/components/planning/GeneratePlanningModal";
@@ -34,8 +34,6 @@ export default function PlanningsPage() {
   const [showGenModal, setShowGenModal] = useState(false);
   const [selected, setSelected]   = useState<PlanningRecord | null>(null);
   const [annotation, setAnnotation]   = useState<Record<string, string>>({});
-  const [dateFrom, setDateFrom]   = useState("");
-  const [dateTo, setDateTo]       = useState("");
   const [successCount, setSuccessCount] = useState(0);
   const [showSuccess, setShowSuccess]   = useState(false);
   const [successIn, setSuccessIn]       = useState(false);
@@ -64,7 +62,7 @@ export default function PlanningsPage() {
       <div className="flex items-center justify-between px-4 py-4 md:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Plannings</h1>
         <Button size="sm" className="h-8 gap-1.5" onClick={() => setShowGenModal(true)}>
-          <Sparkles className="h-3.5 w-3.5" /> Générer
+          <Sparkles className="h-3.5 w-3.5" /> Générer un nouveau planning
         </Button>
       </div>
 
@@ -78,46 +76,19 @@ export default function PlanningsPage() {
             </span>
           </div>
           <div className="border border-border rounded-xl overflow-hidden" style={{ height: 480 }}>
-            <PlanningView hideTabs hideNav hideStatus />
+            <PlanningView hideTabs hideNav hideStatus hideAlerts />
           </div>
         </div>
       )}
 
-      {/* Séparateur + filtre historique */}
-      <div className="flex items-center gap-2 border-border border-t border-b px-4 py-3 md:px-6">
-        <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-        <span className="text-muted-foreground text-xs shrink-0">Historique — du</span>
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={e => setDateFrom(e.target.value)}
-          className="border-border bg-muted/30 focus:ring-primary/30 rounded-md border px-2.5 py-1.5 text-xs outline-none focus:ring-2"
-        />
-        <span className="text-muted-foreground text-xs shrink-0">au</span>
-        <input
-          type="date"
-          value={dateTo}
-          onChange={e => setDateTo(e.target.value)}
-          className="border-border bg-muted/30 focus:ring-primary/30 rounded-md border px-2.5 py-1.5 text-xs outline-none focus:ring-2"
-        />
-        {(dateFrom || dateTo) && (
-          <button
-            type="button"
-            onClick={() => { setDateFrom(""); setDateTo(""); }}
-            className="text-muted-foreground hover:text-foreground ml-1 transition-colors"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
+      {/* Titre plannings précédents */}
+      <div className="border-border border-t px-4 pt-5 pb-2 md:px-6">
+        <h2 className="text-sm font-semibold text-foreground">Plannings précédents</h2>
       </div>
 
       {/* Liste des autres plannings */}
       <div className="divide-border divide-y">
-        {otherPlannings.filter(p => {
-          if (dateFrom && p.dateDebut < dateFrom) return false;
-          if (dateTo   && p.dateDebut > dateTo)   return false;
-          return true;
-        }).map((planning) => {
+        {otherPlannings.map((planning) => {
           const sc    = STATUS_CFG[planning.statut];
           const stats = computeStats(planning.dateDebut);
           return (
@@ -148,10 +119,17 @@ export default function PlanningsPage() {
                     <Clock className="h-3.5 w-3.5" />
                     {stats.totalHeures} h planifiées
                   </span>
-                  <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    {stats.nbTurns} shifts
-                  </span>
+                  {planning.modifications > 0 ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-amber-700">
+                      <Pencil className="h-3.5 w-3.5" />
+                      {planning.modifications} modification{planning.modifications > 1 ? "s" : ""}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                      <Pencil className="h-3.5 w-3.5" />
+                      Aucune modification
+                    </span>
+                  )}
                 </div>
               </div>
 

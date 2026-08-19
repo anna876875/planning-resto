@@ -163,11 +163,12 @@ const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: st
 
 // ─── Composant ────────────────────────────────────────────────────────────────
 
-export function PlanningView({ onPublished, hideTabs = false, hideNav = false, hideStatus = false, readOnly = false, showNames = false }: {
+export function PlanningView({ onPublished, hideTabs = false, hideNav = false, hideStatus = false, hideAlerts = false, readOnly = false, showNames = false }: {
   onPublished?: (count: number) => void;
   hideTabs?: boolean;
   hideNav?: boolean;
   hideStatus?: boolean;
+  hideAlerts?: boolean;
   readOnly?: boolean;
   showNames?: boolean;
 } = {}) {
@@ -397,7 +398,7 @@ export function PlanningView({ onPublished, hideTabs = false, hideNav = false, h
       )}
 
       {/* ── Bandeau d'info unifié ─────────────────────────────────────────── */}
-      {activeTab === "planning" && allConflicts.length > 0 && (
+      {activeTab === "planning" && !hideAlerts && allConflicts.length > 0 && (
         <div className={cn(
           "border-border flex items-start gap-2 border-b px-4 py-2 text-xs",
           bloquants.length > 0 ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"
