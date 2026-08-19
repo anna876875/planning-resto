@@ -34,15 +34,15 @@ const WEEK_PATTERNS: Record<string, ShiftType[]> = {
   "4":  ["soir",      "soir",      "repos",     "soir",      "soir",      "repos",     "repos"],
   "10": ["midi",      "repos",     "midi",      "midi",      "repos",     "midi",      "repos"],
   "11": ["soir",      "soir",      "repos",     "soir",      "soir",      "soir",      "repos"],
-  "15": ["repos",     "repos",     "midi",      "repos",     "soir",      "midi",      "repos"],
+  "15": ["repos",     "repos",     "midi",      "repos",     "midi",      "midi",      "repos"],
   // Bar
-  "5":  ["repos",     "repos",     "soir",      "soir",      "repos",     "midi",      "repos"],
+  "5":  ["repos",     "repos",     "soir",      "soir",      "repos",     "soir",      "repos"],
   "12": ["midi",      "midi",      "midi",      "repos",     "midi",      "repos",     "repos"],
   "13": ["repos",     "soir",      "soir",      "soir",      "repos",     "soir",      "repos"],
   // Plonge
   "6":  ["ouverture", "repos",     "ouverture", "ouverture", "repos",     "ouverture", "repos"], // plongeur ouverture
   "14": ["soir",      "repos",     "soir",      "repos",     "soir",      "soir",      "repos"],
-  "16": ["repos",     "midi",      "repos",     "soir",      "midi",      "repos",     "repos"],
+  "16": ["repos",     "midi",      "repos",     "midi",      "midi",      "repos",     "repos"],
 };
 
 const SHIFT_TIMES: Record<ShiftType, { start: string; end: string }> = {
