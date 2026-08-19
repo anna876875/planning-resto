@@ -70,9 +70,7 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
         {/* ── En-têtes jours ── */}
         <thead>
           <tr className="border-b border-border bg-card">
-            <th className="w-40 px-4 pb-2.5 pt-3 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Service
-            </th>
+            <th style={{ width: 56 }} />
             {days.map(d => {
               const date = parseUTC(d);
               const isWeekend = date.getUTCDay() === 6;
@@ -99,15 +97,17 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
           {SERVICES.map((svc, svcIdx) => (
             <tr key={svc.key} className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}>
 
-              {/* Colonne gauche — service + horaires */}
-              <td className={cn("px-4 py-4 align-top", svc.rowBg)}>
-                <div className="flex items-center gap-1.5">
+              {/* Colonne gauche — heure verticale + service */}
+              <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 56 }}>
+                <div className="flex h-full items-center justify-center gap-2 px-2">
+                  <span
+                    className={cn("text-[10px] font-thin tabular-nums tracking-widest select-none", svc.text)}
+                    style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
+                  >
+                    {svc.startH}
+                  </span>
                   <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
-                  <span className={cn("font-semibold text-sm", svc.text)}>{svc.label}</span>
                 </div>
-                <p className={cn("mt-1 pl-3.5 text-[11px] font-thin tracking-wide", svc.text)}>
-                  {svc.hours}
-                </p>
               </td>
 
               {/* Cellules par jour */}
