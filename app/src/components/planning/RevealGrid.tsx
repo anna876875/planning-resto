@@ -151,13 +151,13 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
             {/* Bande coupure entre Midi et Soir */}
             {svc.key === "midi" && (
               <tr key="coupure" className="border-b border-border/50">
-                <td className="bg-muted/40 py-2 px-4" style={{ width: 64 }}>
+                <td className="bg-muted/20 backdrop-blur-sm py-2 px-4" style={{ width: 64 }}>
                   <span className="text-[9px] font-light tracking-widest text-muted-foreground/60 select-none">
                     coupure
                   </span>
                 </td>
                 {days.map(d => (
-                  <td key={d} className="bg-muted/25" />
+                  <td key={d} className="bg-muted/15 backdrop-blur-sm" />
                 ))}
               </tr>
             )}
