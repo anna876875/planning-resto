@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Pencil, Check, Plus, X, Clock, Users, CalendarDays, Briefcase, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { loadConfig, saveConfig, DEFAULT_CONFIG, type PlanningConfig } from "@/lib/planning/config";
+import { loadConfig, saveConfig, DEFAULT_CONFIG, type PlanningConfig, type ServiceConfig } from "@/lib/planning/config";
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,12 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+const JOURS = [
+  { idx: 1, label: "Lun" }, { idx: 2, label: "Mar" }, { idx: 3, label: "Mer" },
+  { idx: 4, label: "Jeu" }, { idx: 5, label: "Ven" }, { idx: 6, label: "Sam" },
+  { idx: 0, label: "Dim" },
+];
 
 // ─── Helpers UI ──────────────────────────────────────────────────────────────
 
@@ -38,7 +44,6 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   );
 }
 
-// Ligne affichant une valeur, cliquable pour modifier
 function Row({
   label, hint, value, editing, onEdit, onDone, children,
 }: {
@@ -90,35 +95,137 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-function NumberInput({ value, onChange, min = 1, max = 99 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) {
+function NumberInput({ value, onChange, min = 1, max = 99, unit }: {
+  value: number; onChange: (v: number) => void; min?: number; max?: number; unit?: string;
+}) {
   return (
-    <input
-      type="number"
-      value={value}
-      min={min}
-      max={max}
-      onChange={e => onChange(Number(e.target.value))}
-      className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-center text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
-    />
+    <span className="flex items-center gap-1.5">
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-16 rounded-lg border border-border bg-background px-2.5 py-1.5 text-center text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+      {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+    </span>
   );
 }
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// Sélecteur de jours (pills inline) — auto-save
+function DayPicker({
+  selected, onChange,
+}: {
+  selected: number[]; onChange: (days: number[]) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {JOURS.map(({ idx, label }) => {
+        const active = selected.includes(idx);
+        return (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onChange(active ? selected.filter(d => d !== idx) : [...selected, idx])}
+            className={cn(
+              "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
+              active
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-muted-foreground hover:border-primary/40"
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-const JOURS = [
-  { idx: 1, label: "Lun" }, { idx: 2, label: "Mar" }, { idx: 3, label: "Mer" },
-  { idx: 4, label: "Jeu" }, { idx: 5, label: "Ven" }, { idx: 6, label: "Sam" },
-  { idx: 0, label: "Dim" },
-];
-const SVC_LABELS: Record<string, string> = { ouverture: "Ouverture", midi: "Midi", soir: "Soir" };
+// Card de configuration d'un service (Matin ou Soir)
+function ServiceCard({
+  svcKey, svc, editing, setEditing, onUpdate, onSave,
+}: {
+  svcKey: "matin" | "soir";
+  svc: ServiceConfig;
+  editing: string | null;
+  setEditing: (v: string | null) => void;
+  onUpdate: (patch: Partial<ServiceConfig>) => void;
+  onSave: () => void;
+}) {
+  const label = svcKey === "matin" ? "Matin" : "Soir";
+
+  function done(field: string) {
+    setEditing(null);
+    onSave();
+  }
+
+  const is = (f: string) => editing === `${svcKey}-${f}`;
+
+  return (
+    <div className="rounded-xl border border-border bg-card mb-4">
+      {/* Header service */}
+      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
+        <span className="text-[13px] font-semibold">{label}</span>
+        <Toggle checked={svc.actif} onChange={v => { onUpdate({ actif: v }); onSave(); }} />
+        {!svc.actif && <span className="text-[11px] text-muted-foreground">Service désactivé</span>}
+      </div>
+
+      {svc.actif && (
+        <div className="px-4">
+          {/* Horaires */}
+          <Row
+            label="Horaires"
+            value={`${svc.debut} → ${svc.fin}`}
+            editing={is("horaires")}
+            onEdit={() => setEditing(`${svcKey}-horaires`)}
+            onDone={() => done("horaires")}
+          >
+            <TimeInput value={svc.debut} onChange={v => onUpdate({ debut: v })} />
+            <span className="text-muted-foreground/40 text-xs">→</span>
+            <TimeInput value={svc.fin} onChange={v => onUpdate({ fin: v })} />
+          </Row>
+
+          {/* Effectifs */}
+          <Row
+            label="Effectifs"
+            hint="Nombre de personnes par service selon la période"
+            value={`${svc.effectifStable} en période stable · ${svc.effectifAffluence} en affluence`}
+            editing={is("effectifs")}
+            onEdit={() => setEditing(`${svcKey}-effectifs`)}
+            onDone={() => done("effectifs")}
+          >
+            <span className="text-xs text-muted-foreground">Stable</span>
+            <NumberInput value={svc.effectifStable} min={1} max={30} onChange={v => onUpdate({ effectifStable: v })} />
+            <span className="text-xs text-muted-foreground ml-2">Affluence</span>
+            <NumberInput value={svc.effectifAffluence} min={1} max={30} onChange={v => onUpdate({ effectifAffluence: v })} />
+          </Row>
+
+          {/* Jours d'affluence */}
+          <div className="border-b border-border/40 py-4 last:border-0">
+            <p className="text-[13px] font-medium">Jours d'affluence</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Jours où l'effectif passe à {svc.effectifAffluence} personnes.
+            </p>
+            <DayPicker
+              selected={svc.joursAffluence}
+              onChange={days => { onUpdate({ joursAffluence: days }); onSave(); }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ParametresPage() {
-  const [cfg, setCfg]       = useState<PlanningConfig>(DEFAULT_CONFIG);
-  const [tab, setTab]       = useState<TabKey>("services");
-  const [editing, setEditing] = useState<string | null>(null);
-  const [saved, setSaved]   = useState(false);
+  const [cfg, setCfg]           = useState<PlanningConfig>(DEFAULT_CONFIG);
+  const [tab, setTab]           = useState<TabKey>("services");
+  const [editing, setEditing]   = useState<string | null>(null);
+  const [saved, setSaved]       = useState(false);
   const [newPoste, setNewPoste] = useState("");
 
   useEffect(() => { setCfg(loadConfig()); }, []);
@@ -127,18 +234,26 @@ export default function ParametresPage() {
     setCfg(prev => ({ ...prev, ...patch }));
   }
 
-  function updateService(key: keyof PlanningConfig["services"], patch: Partial<PlanningConfig["services"]["ouverture"]>) {
-    setCfg(prev => ({
-      ...prev,
-      services: { ...prev.services, [key]: { ...prev.services[key], ...patch } },
-    }));
-  }
-
-  function done(field: string) {
-    setEditing(null);
+  function save(cfg: PlanningConfig) {
     saveConfig(cfg);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
+  }
+
+  function done() {
+    setEditing(null);
+    save(cfg);
+  }
+
+  function updateService(key: "matin" | "soir", patch: Partial<ServiceConfig>) {
+    setCfg(prev => {
+      const next = { ...prev, services: { ...prev.services, [key]: { ...prev.services[key], ...patch } } };
+      return next;
+    });
+  }
+
+  function saveService() {
+    save(cfg);
   }
 
   function toggleDisponibilite(dayIdx: number, svcKey: string) {
@@ -146,7 +261,7 @@ export default function ParametresPage() {
       const cur  = prev.disponibilites[dayIdx] ?? [];
       const next = cur.includes(svcKey) ? cur.filter(s => s !== svcKey) : [...cur, svcKey];
       const updated = { ...prev, disponibilites: { ...prev.disponibilites, [dayIdx]: next } };
-      saveConfig(updated);
+      save(updated);
       return updated;
     });
   }
@@ -156,29 +271,29 @@ export default function ParametresPage() {
     if (!t || cfg.postes.includes(t)) return;
     const updated = { ...cfg, postes: [...cfg.postes, t] };
     setCfg(updated);
-    saveConfig(updated);
+    save(updated);
     setNewPoste("");
   }
 
   function removePoste(p: string) {
     const updated = { ...cfg, postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) };
     setCfg(updated);
-    saveConfig(updated);
+    save(updated);
   }
 
   function toggleTournant(p: string) {
-    const list = cfg.postesTournants.includes(p)
+    const list    = cfg.postesTournants.includes(p)
       ? cfg.postesTournants.filter(x => x !== p)
       : [...cfg.postesTournants, p];
     const updated = { ...cfg, postesTournants: list };
     setCfg(updated);
-    saveConfig(updated);
+    save(updated);
   }
 
   function toggleBoolean(field: keyof PlanningConfig, value: boolean) {
     const updated = { ...cfg, [field]: value };
     setCfg(updated);
-    saveConfig(updated);
+    save(updated);
   }
 
   const is = (f: string) => editing === f;
@@ -218,102 +333,46 @@ export default function ParametresPage() {
       {/* ── HORAIRES ─────────────────────────────────────────────── */}
       {tab === "services" && (
         <div className="flex flex-col">
-          <p className="mb-4 text-[11px] text-muted-foreground">Horaires de chaque service et période de coupure.</p>
+          <p className="mb-4 text-[11px] text-muted-foreground">
+            Horaires, effectifs et jours d'affluence pour chaque service.
+          </p>
 
-          {(["ouverture", "midi", "soir"] as const).map(key => {
-            const svc = cfg.services[key];
-            return (
-              <Row
-                key={key}
-                label={SVC_LABELS[key]}
-                hint={svc.actif ? undefined : "Service désactivé"}
-                value={svc.actif ? `${svc.debut} – ${svc.fin}` : "—"}
-                editing={is(key)}
-                onEdit={() => setEditing(key)}
-                onDone={() => done(key)}
-              >
-                <Toggle checked={svc.actif} onChange={v => updateService(key, { actif: v })} />
-                {svc.actif && (
-                  <>
-                    <TimeInput value={svc.debut} onChange={v => updateService(key, { debut: v })} />
-                    <span className="text-muted-foreground/40 text-xs">→</span>
-                    <TimeInput value={svc.fin} onChange={v => updateService(key, { fin: v })} />
-                  </>
-                )}
-              </Row>
-            );
-          })}
+          {(["matin", "soir"] as const).map(key => (
+            <ServiceCard
+              key={key}
+              svcKey={key}
+              svc={cfg.services[key]}
+              editing={editing}
+              setEditing={setEditing}
+              onUpdate={patch => { updateService(key, patch); }}
+              onSave={saveService}
+            />
+          ))}
 
-          <Row
-            label="Coupure"
-            hint="Période de fermeture — personne ne travaille"
-            value={`${cfg.coupure.debut} – ${cfg.coupure.fin}`}
-            editing={is("coupure")}
-            onEdit={() => setEditing("coupure")}
-            onDone={() => done("coupure")}
-          >
-            <TimeInput value={cfg.coupure.debut} onChange={v => update({ coupure: { ...cfg.coupure, debut: v } })} />
-            <span className="text-muted-foreground/40 text-xs">→</span>
-            <TimeInput value={cfg.coupure.fin} onChange={v => update({ coupure: { ...cfg.coupure, fin: v } })} />
-          </Row>
+          <div className="mt-2">
+            <Row
+              label="Coupure"
+              hint="Période de fermeture entre les services — personne ne travaille."
+              value={`${cfg.coupure.debut} → ${cfg.coupure.fin}`}
+              editing={is("coupure")}
+              onEdit={() => setEditing("coupure")}
+              onDone={done}
+            >
+              <TimeInput value={cfg.coupure.debut} onChange={v => update({ coupure: { ...cfg.coupure, debut: v } })} />
+              <span className="text-muted-foreground/40 text-xs">→</span>
+              <TimeInput value={cfg.coupure.fin} onChange={v => update({ coupure: { ...cfg.coupure, fin: v } })} />
+            </Row>
+          </div>
         </div>
       )}
 
       {/* ── ÉQUIPE ───────────────────────────────────────────────── */}
       {tab === "equipe" && (
         <div className="flex flex-col">
-          <p className="mb-4 text-[11px] text-muted-foreground">Effectifs cibles et règles de repos pour la génération du planning.</p>
-
-          {/* Effectifs globaux */}
-          <Row
-            label="Effectif — période stable"
-            hint="Lun – Jeu · activité régulière"
-            value={`${cfg.effectifs.stable} employés / jour`}
-            editing={is("stable")}
-            onEdit={() => setEditing("stable")}
-            onDone={() => done("stable")}
-          >
-            <NumberInput value={cfg.effectifs.stable} onChange={v => update({ effectifs: { ...cfg.effectifs, stable: v } })} />
-          </Row>
-
-          <Row
-            label="Effectif — période d'affluence"
-            hint="Ven – Sam · pic de fréquentation"
-            value={`${cfg.effectifs.affluence} employés / jour`}
-            editing={is("affluence")}
-            onEdit={() => setEditing("affluence")}
-            onDone={() => done("affluence")}
-          >
-            <NumberInput value={cfg.effectifs.affluence} onChange={v => update({ effectifs: { ...cfg.effectifs, affluence: v } })} />
-          </Row>
-
-          {/* Effectifs par service */}
-          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Effectifs cibles par service
-          </p>
-          {(["ouverture", "midi", "soir"] as const).map(svc => (
-            <Row
-              key={`eps-${svc}`}
-              label={SVC_LABELS[svc]}
-              hint="Nombre de personnes minimum pour ce service"
-              value={`${cfg.effectifsParService[svc]} personnes`}
-              editing={is(`eps-${svc}`)}
-              onEdit={() => setEditing(`eps-${svc}`)}
-              onDone={() => done(`eps-${svc}`)}
-            >
-              <NumberInput
-                value={cfg.effectifsParService[svc]}
-                min={1}
-                max={20}
-                onChange={v => update({ effectifsParService: { ...cfg.effectifsParService, [svc]: v } })}
-              />
-            </Row>
-          ))}
+          <p className="mb-4 text-[11px] text-muted-foreground">Règles de repos et contraintes légales pour la génération.</p>
 
           {/* Règles de repos */}
-          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Règles de repos
-          </p>
+          <p className="mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Repos</p>
 
           <div className="flex items-center justify-between border-b border-border/40 py-4">
             <div>
@@ -337,7 +396,7 @@ export default function ParametresPage() {
             value={`${cfg.reposConsecutifsMax} jour${cfg.reposConsecutifsMax > 1 ? "s" : ""} max`}
             editing={is("reposMax")}
             onEdit={() => setEditing("reposMax")}
-            onDone={() => done("reposMax")}
+            onDone={done}
           >
             <NumberInput value={cfg.reposConsecutifsMax} min={1} max={7} onChange={v => update({ reposConsecutifsMax: v })} />
           </Row>
@@ -348,15 +407,13 @@ export default function ParametresPage() {
             value={`${cfg.joursReposParSemaine} jour${cfg.joursReposParSemaine > 1 ? "s" : ""} / semaine`}
             editing={is("joursRepos")}
             onEdit={() => setEditing("joursRepos")}
-            onDone={() => done("joursRepos")}
+            onDone={done}
           >
             <NumberInput value={cfg.joursReposParSemaine} min={1} max={3} onChange={v => update({ joursReposParSemaine: v })} />
           </Row>
 
           {/* Contraintes légales */}
-          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Contraintes légales
-          </p>
+          <p className="mt-5 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Contraintes légales</p>
 
           <Row
             label="Repos entre deux services"
@@ -364,10 +421,9 @@ export default function ParametresPage() {
             value={`${cfg.reposEntreServicesH}h minimum`}
             editing={is("reposH")}
             onEdit={() => setEditing("reposH")}
-            onDone={() => done("reposH")}
+            onDone={done}
           >
-            <NumberInput value={cfg.reposEntreServicesH} min={8} max={16} onChange={v => update({ reposEntreServicesH: v })} />
-            <span className="text-xs text-muted-foreground">heures</span>
+            <NumberInput value={cfg.reposEntreServicesH} min={8} max={16} unit="heures" onChange={v => update({ reposEntreServicesH: v })} />
           </Row>
 
           <Row
@@ -376,21 +432,20 @@ export default function ParametresPage() {
             value={`${cfg.joursConsecutifsMax} jours max`}
             editing={is("joursConsec")}
             onEdit={() => setEditing("joursConsec")}
-            onDone={() => done("joursConsec")}
+            onDone={done}
           >
             <NumberInput value={cfg.joursConsecutifsMax} min={3} max={6} onChange={v => update({ joursConsecutifsMax: v })} />
           </Row>
 
           <Row
             label="Heures contrat / semaine"
-            hint="Heures hebdomadaires contractuelles. Utilisées pour calculer le nombre de jours travaillés."
+            hint="Heures hebdomadaires contractuelles — définit le nombre de jours travaillés / semaine."
             value={`${cfg.heuresContratHebdo}h / semaine`}
             editing={is("heuresHebdo")}
             onEdit={() => setEditing("heuresHebdo")}
-            onDone={() => done("heuresHebdo")}
+            onDone={done}
           >
-            <NumberInput value={cfg.heuresContratHebdo} min={20} max={48} onChange={v => update({ heuresContratHebdo: v })} />
-            <span className="text-xs text-muted-foreground">heures</span>
+            <NumberInput value={cfg.heuresContratHebdo} min={20} max={48} unit="heures" onChange={v => update({ heuresContratHebdo: v })} />
           </Row>
         </div>
       )}
@@ -399,13 +454,10 @@ export default function ParametresPage() {
       {tab === "disponibilites" && (
         <div className="flex flex-col">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-[11px] text-muted-foreground">Jours et services d'ouverture fixes de votre établissement.</p>
+            <p className="text-[11px] text-muted-foreground">Jours et services d'ouverture de votre établissement.</p>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-muted-foreground">Horaires fixes</span>
-              <Toggle
-                checked={cfg.horairesFixes}
-                onChange={v => toggleBoolean("horairesFixes", v)}
-              />
+              <Toggle checked={cfg.horairesFixes} onChange={v => toggleBoolean("horairesFixes", v)} />
             </div>
           </div>
 
@@ -414,9 +466,9 @@ export default function ParametresPage() {
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Jour</th>
-                  {(["ouverture", "midi", "soir"] as const).map(s => (
+                  {(["matin", "soir"] as const).map(s => (
                     <th key={s} className="px-4 py-2.5 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      {SVC_LABELS[s]}
+                      {s === "matin" ? "Matin" : "Soir"}
                     </th>
                   ))}
                 </tr>
@@ -425,7 +477,7 @@ export default function ParametresPage() {
                 {JOURS.map(({ idx, label }) => (
                   <tr key={idx} className={cn("border-b border-border/40 last:border-0", idx === 0 && "bg-muted/10")}>
                     <td className="px-4 py-3 text-[12px] font-medium">{label}</td>
-                    {(["ouverture", "midi", "soir"] as const).map(sKey => {
+                    {(["matin", "soir"] as const).map(sKey => {
                       const active = (cfg.disponibilites[idx] ?? []).includes(sKey);
                       return (
                         <td key={sKey} className="px-4 py-3 text-center">

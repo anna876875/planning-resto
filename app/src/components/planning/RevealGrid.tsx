@@ -3,15 +3,15 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
+import type { Shift } from "@/types/planning";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const DAY_SHORT = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 const SERVICES = [
-  { key: "ouverture", label: "Ouverture", startH: "07h", text: "text-sky-800",    dot: "bg-sky-500",    rowBg: "bg-sky-50/40"    },
-  { key: "midi",      label: "Midi",      startH: "11h", text: "text-teal-800",   dot: "bg-teal-500",   rowBg: "bg-teal-50/40"   },
-  { key: "soir",      label: "Soir",      startH: "15h", text: "text-violet-800", dot: "bg-violet-500", rowBg: "bg-violet-50/40" },
+  { key: "matin", label: "Matin", startH: "08h", text: "text-sky-800",    dot: "bg-sky-500",    rowBg: "bg-sky-50/40"    },
+  { key: "soir",  label: "Soir",  startH: "18h", text: "text-violet-800", dot: "bg-violet-500", rowBg: "bg-violet-50/40" },
 ] as const;
 
 const DEPARTMENTS = [
@@ -37,8 +37,6 @@ function getMondayOf(dateStr: string): string {
 
 // ─── Composant ───────────────────────────────────────────────────────────────
 
-import type { Shift } from "@/types/planning";
-
 export default function RevealGrid({
   dateFrom, dateTo, shifts: shiftsProp,
 }: {
@@ -61,6 +59,7 @@ export default function RevealGrid({
     return mondays.flatMap(wk => getShiftsForWeek(wk));
   }, [allDays, shiftsProp]);
 
+  // Jours avec au moins un employé qui travaille (matin ou soir)
   const days = useMemo(() =>
     allDays.filter(d =>
       employees.some(emp =>
@@ -105,7 +104,7 @@ export default function RevealGrid({
             <>
             <tr key={svc.key} className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}>
 
-              {/* Colonne gauche — embauche + coupure (si applicable) */}
+              {/* Colonne gauche — heure d'embauche */}
               <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 64 }}>
                 <div className="flex flex-col items-center justify-center gap-1.5 px-2">
                   <span className={cn("text-[11px] font-light tabular-nums tracking-wide select-none", svc.text)}>
@@ -155,8 +154,8 @@ export default function RevealGrid({
               })}
             </tr>
 
-            {/* Bande coupure entre Midi et Soir */}
-            {svc.key === "midi" && (
+            {/* Bande coupure entre Matin et Soir */}
+            {svc.key === "matin" && (
               <tr key="coupure" className="border-b border-border/50">
                 <td className="bg-muted/20 backdrop-blur-sm py-2 px-4" style={{ width: 64 }}>
                   <span className="text-[9px] font-light tracking-widest text-muted-foreground/60 select-none">

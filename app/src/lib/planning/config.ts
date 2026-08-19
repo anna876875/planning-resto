@@ -1,41 +1,21 @@
 // Configuration complète pour la génération de plannings
 
-export type RoleKey = "chef_cuisine" | "chef_partie" | "serveur" | "barman" | "plongeur";
-
 export interface ServiceConfig {
-  actif:  boolean;
-  debut:  string; // "HH:mm"
-  fin:    string;
+  actif: boolean;
+  debut: string; // "HH:mm"
+  fin: string;
+  effectifStable: number;
+  effectifAffluence: number;
+  joursAffluence: number[]; // JS weekday indices (1=Lun…6=Sam, 0=Dim)
 }
 
 export interface PlanningConfig {
-  // ── Horaires de services ──────────────────────────────────────
+  // ── Services ─────────────────────────────────────────────────
   services: {
-    ouverture: ServiceConfig;
-    midi:      ServiceConfig;
-    soir:      ServiceConfig;
+    matin: ServiceConfig;
+    soir:  ServiceConfig;
   };
-
-  // ── Coupure ──────────────────────────────────────────────────
   coupure: { debut: string; fin: string };
-
-  // ── Effectifs totaux par période ─────────────────────────────
-  effectifs: { stable: number; affluence: number };
-
-  // ── Effectifs minimum par service ────────────────────────────
-  effectifsParService: {
-    ouverture: number;
-    midi:      number;
-    soir:      number;
-  };
-
-  // ── Rôles minimum requis par service ─────────────────────────
-  // Clé = role, valeur = nombre minimum requis
-  rolesParService: {
-    ouverture: Partial<Record<RoleKey, number>>;
-    midi:      Partial<Record<RoleKey, number>>;
-    soir:      Partial<Record<RoleKey, number>>;
-  };
 
   // ── Contraintes légales ───────────────────────────────────────
   reposEntreServicesH:  number; // repos minimum entre 2 services (légal FR: 11h)
@@ -45,13 +25,13 @@ export interface PlanningConfig {
   heuresMaxParJour:     number; // durée max d'un service (légal FR: 10h)
 
   // ── Équité & préférences ──────────────────────────────────────
-  weekendEquitable:  boolean; // rotation équitable des week-ends
-  reposEquitable:    boolean; // distribution équitable des jours de repos
-  reposConsecutifsMax: number; // repos consécutifs max (≠ congés)
+  weekendEquitable:    boolean;
+  reposEquitable:      boolean;
+  reposConsecutifsMax: number;
 
   // ── Disponibilités hebdomadaires ─────────────────────────────
-  horairesFixes: boolean;
-  disponibilites: Record<number, string[]>; // jsDay -> services actifs
+  horairesFixes:   boolean;
+  disponibilites:  Record<number, string[]>; // jsDay → ["matin","soir"]
 
   // ── Postes ───────────────────────────────────────────────────
   postes:          string[];
@@ -64,42 +44,29 @@ export interface PlanningConfig {
 
 export const DEFAULT_CONFIG: PlanningConfig = {
   services: {
-    ouverture: { actif: true,  debut: "07:00", fin: "15:00" },
-    midi:      { actif: true,  debut: "11:00", fin: "19:00" },
-    soir:      { actif: true,  debut: "15:00", fin: "23:00" },
+    matin: { actif: true, debut: "08:00", fin: "16:00", effectifStable: 4, effectifAffluence: 6,  joursAffluence: [5, 6] },
+    soir:  { actif: true, debut: "18:00", fin: "23:00", effectifStable: 6, effectifAffluence: 10, joursAffluence: [5, 6] },
   },
-  coupure:  { debut: "15:00", fin: "19:00" },
-  effectifs: { stable: 10, affluence: 13 },
+  coupure: { debut: "16:00", fin: "18:00" },
 
-  // Composition cible par service
-  effectifsParService: { ouverture: 2, midi: 5, soir: 8 },
-  rolesParService: {
-    ouverture: { chef_cuisine: 1, plongeur: 1 },
-    midi:      { chef_cuisine: 1, serveur: 2, barman: 1, plongeur: 1 },
-    soir:      { chef_partie: 1, serveur: 3, barman: 1, plongeur: 1 },
-  },
-
-  // Légalité (droit du travail français)
   reposEntreServicesH:  11,
   joursConsecutifsMax:  6,
   joursReposParSemaine: 2,
   heuresContratHebdo:   39,
   heuresMaxParJour:     10,
 
-  // Équité
   weekendEquitable:    true,
   reposEquitable:      true,
   reposConsecutifsMax: 2,
 
-  // Disponibilités
   horairesFixes: true,
   disponibilites: {
-    1: ["ouverture", "midi", "soir"],
-    2: ["ouverture", "midi", "soir"],
-    3: ["ouverture", "midi", "soir"],
-    4: ["ouverture", "midi", "soir"],
-    5: ["ouverture", "midi", "soir"],
-    6: ["ouverture", "midi", "soir"],
+    1: ["matin", "soir"],
+    2: ["matin", "soir"],
+    3: ["matin", "soir"],
+    4: ["matin", "soir"],
+    5: ["matin", "soir"],
+    6: ["matin", "soir"],
     0: [],
   },
 
@@ -116,21 +83,18 @@ export function loadConfig(): PlanningConfig {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULT_CONFIG;
-    // Deep merge pour préserver les nouveaux champs par défaut
-    const saved = JSON.parse(raw) as Partial<PlanningConfig>;
+    const saved = JSON.parse(raw) as Record<string, unknown>;
+    const savedSvcs = (saved.services ?? {}) as Record<string, unknown>;
     return {
       ...DEFAULT_CONFIG,
       ...saved,
-      services:            { ...DEFAULT_CONFIG.services,            ...saved.services            },
-      effectifs:           { ...DEFAULT_CONFIG.effectifs,           ...saved.effectifs           },
-      effectifsParService: { ...DEFAULT_CONFIG.effectifsParService, ...saved.effectifsParService },
-      rolesParService: {
-        ouverture: { ...DEFAULT_CONFIG.rolesParService.ouverture, ...saved.rolesParService?.ouverture },
-        midi:      { ...DEFAULT_CONFIG.rolesParService.midi,      ...saved.rolesParService?.midi      },
-        soir:      { ...DEFAULT_CONFIG.rolesParService.soir,      ...saved.rolesParService?.soir      },
+      services: {
+        matin: { ...DEFAULT_CONFIG.services.matin, ...(savedSvcs.matin as Partial<ServiceConfig> ?? {}) },
+        soir:  { ...DEFAULT_CONFIG.services.soir,  ...(savedSvcs.soir  as Partial<ServiceConfig> ?? {}) },
       },
-      disponibilites: { ...DEFAULT_CONFIG.disponibilites, ...saved.disponibilites },
-    };
+      coupure:        { ...DEFAULT_CONFIG.coupure,        ...(saved.coupure        as Partial<PlanningConfig["coupure"]>        ?? {}) },
+      disponibilites: { ...DEFAULT_CONFIG.disponibilites, ...(saved.disponibilites as PlanningConfig["disponibilites"] ?? {}) },
+    } as PlanningConfig;
   } catch {
     return DEFAULT_CONFIG;
   }
