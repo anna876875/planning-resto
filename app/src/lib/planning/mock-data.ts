@@ -41,8 +41,8 @@ const WEEK_PATTERNS: Record<string, ShiftType[]> = {
   "13": ["repos",     "soir",      "soir",      "soir",      "repos",     "soir",      "repos"],
   // Plonge
   "6":  ["ouverture", "repos",     "ouverture", "ouverture", "repos",     "ouverture", "repos"], // plongeur ouverture
-  "14": ["soir",      "repos",     "fermeture", "repos",     "soir",      "fermeture", "repos"], // fermeture 19h
-  "16": ["repos",     "midi",      "repos",     "fermeture", "midi",      "repos",     "repos"], // fermeture 19h jeudi
+  "14": ["soir",      "repos",     "soir",      "repos",     "soir",      "soir",      "repos"],
+  "16": ["repos",     "midi",      "repos",     "soir",      "midi",      "repos",     "repos"],
 };
 
 const SHIFT_TIMES: Record<ShiftType, { start: string; end: string }> = {
