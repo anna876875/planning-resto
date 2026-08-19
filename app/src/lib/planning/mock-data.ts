@@ -22,36 +22,37 @@ export const employees: Employee[] = [
   { id: "16", name: "Yasmine Chabane",  role: "plongeur"     },
 ];
 
-// Patterns semaine (Lun→Dim).
-// Contraintes : soir→matin interdit (gap < 11h), max 3 jours consécutifs, max ~35h
+// Lun→Dim · Contraintes : max 2 ouvertures par jour, fermeture = arrivée à 19h
 const WEEK_PATTERNS: Record<string, ShiftType[]> = {
   // Cuisine
-  "1":  ["matin",   "matin",   "repos",   "matin",   "matin",   "repos",   "repos"],
-  "2":  ["soir",    "soir",    "soir",    "repos",   "soir",    "repos",   "repos"],
-  "7":  ["repos",   "matin",   "matin",   "matin",   "repos",   "matin",   "repos"],
-  "8":  ["soir",    "repos",   "soir",    "soir",    "soir",    "repos",   "repos"],
+  "1":  ["ouverture", "ouverture", "repos",     "ouverture", "ouverture", "repos",     "repos"], // chef ouverture
+  "2":  ["soir",      "soir",      "soir",      "repos",     "soir",      "repos",     "repos"],
+  "7":  ["repos",     "midi",      "midi",      "midi",      "repos",     "midi",      "repos"],
+  "8":  ["soir",      "repos",     "soir",      "soir",      "soir",      "repos",     "repos"],
   // Salle
-  "3":  ["repos",   "matin",   "matin",   "repos",   "matin",   "matin",   "repos"],
-  "4":  ["soir",    "soir",    "repos",   "soir",    "soir",    "repos",   "repos"],
-  "10": ["matin",   "repos",   "matin",   "matin",   "repos",   "midi",    "repos"],
-  "11": ["soir",    "soir",    "repos",   "soir",    "soir",    "soir",    "repos"],
-  "15": ["repos",   "repos",   "matin",   "repos",   "soir",    "matin",   "repos"],
+  "3":  ["repos",     "midi",      "midi",      "repos",     "midi",      "midi",      "repos"],
+  "4":  ["soir",      "soir",      "repos",     "soir",      "soir",      "repos",     "repos"],
+  "10": ["midi",      "repos",     "midi",      "midi",      "repos",     "midi",      "repos"],
+  "11": ["soir",      "soir",      "repos",     "soir",      "soir",      "soir",      "repos"],
+  "15": ["repos",     "repos",     "midi",      "repos",     "soir",      "midi",      "repos"],
   // Bar
-  "5":  ["repos",   "repos",   "soir",    "soir",    "repos",   "midi",    "repos"],
-  "12": ["matin",   "matin",   "matin",   "repos",   "matin",   "repos",   "repos"],
-  "13": ["repos",   "soir",    "soir",    "soir",    "repos",   "soir",    "repos"],
+  "5":  ["repos",     "repos",     "soir",      "soir",      "repos",     "midi",      "repos"],
+  "12": ["midi",      "midi",      "midi",      "repos",     "midi",      "repos",     "repos"],
+  "13": ["repos",     "soir",      "soir",      "soir",      "repos",     "soir",      "repos"],
   // Plonge
-  "6":  ["matin",   "repos",   "matin",   "matin",   "repos",   "matin",   "repos"],
-  "14": ["soir",    "repos",   "matin",   "repos",   "soir",    "matin",   "repos"],
-  "16": ["repos",   "matin",   "repos",   "soir",    "matin",   "repos",   "repos"],
+  "6":  ["ouverture", "repos",     "ouverture", "ouverture", "repos",     "ouverture", "repos"], // plongeur ouverture
+  "14": ["soir",      "repos",     "fermeture", "repos",     "soir",      "fermeture", "repos"], // fermeture 19h
+  "16": ["repos",     "midi",      "repos",     "fermeture", "midi",      "repos",     "repos"], // fermeture 19h jeudi
 };
 
 const SHIFT_TIMES: Record<ShiftType, { start: string; end: string }> = {
-  matin:   { start: "07:00", end: "15:00" },
-  soir:    { start: "15:00", end: "23:00" },
-  midi:    { start: "11:00", end: "19:00" },
-  coupure: { start: "10:00", end: "23:00" },
-  repos:   { start: "",      end: ""      },
+  ouverture: { start: "07:00", end: "15:00" },
+  midi:      { start: "11:00", end: "19:00" },
+  soir:      { start: "15:00", end: "23:00" },
+  fermeture: { start: "19:00", end: "23:00" },
+  matin:     { start: "07:00", end: "15:00" }, // conservé pour compatibilité
+  coupure:   { start: "10:00", end: "23:00" }, // conservé pour page équipe
+  repos:     { start: "",      end: ""      },
 };
 
 function addDays(dateStr: string, days: number): string {
