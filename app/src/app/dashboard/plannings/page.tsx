@@ -55,20 +55,38 @@ export default function PlanningsPage() {
     setSuccessIn(false);
   }
 
+  const activePlanning = mockPlannings.find(p => p.statut === "actif");
+  const otherPlannings = mockPlannings.filter(p => p.statut !== "actif");
+
   return (
     <div className="flex flex-col">
       {/* Titre + action */}
-      <div className="flex items-center justify-between px-4 py-6 md:px-6">
+      <div className="flex items-center justify-between px-4 py-4 md:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Plannings</h1>
         <Button size="sm" className="h-8 gap-1.5" onClick={() => setShowGenModal(true)}>
-          <Sparkles className="h-3.5 w-3.5" /> Générer un nouveau planning
+          <Sparkles className="h-3.5 w-3.5" /> Générer
         </Button>
       </div>
 
-      {/* Filtre par date */}
-      <div className="flex items-center gap-2 border-border border-b px-4 pb-4 md:px-6">
+      {/* Planning actif — ouvert en haut */}
+      {activePlanning && (
+        <div className="px-4 pb-4 md:px-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Planning actif</span>
+            <span className="rounded-full border px-2 py-0.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 border-emerald-200">
+              {activePlanning.semaine}
+            </span>
+          </div>
+          <div className="border border-border rounded-xl overflow-hidden" style={{ height: 480 }}>
+            <PlanningView />
+          </div>
+        </div>
+      )}
+
+      {/* Séparateur + filtre historique */}
+      <div className="flex items-center gap-2 border-border border-t border-b px-4 py-3 md:px-6">
         <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-        <span className="text-muted-foreground text-xs shrink-0">Du</span>
+        <span className="text-muted-foreground text-xs shrink-0">Historique — du</span>
         <input
           type="date"
           value={dateFrom}
@@ -93,9 +111,9 @@ export default function PlanningsPage() {
         )}
       </div>
 
-      {/* Liste */}
+      {/* Liste des autres plannings */}
       <div className="divide-border divide-y">
-        {mockPlannings.filter(p => {
+        {otherPlannings.filter(p => {
           if (dateFrom && p.dateDebut < dateFrom) return false;
           if (dateTo   && p.dateDebut > dateTo)   return false;
           return true;
