@@ -97,13 +97,10 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
           {SERVICES.map((svc, svcIdx) => (
             <tr key={svc.key} className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}>
 
-              {/* Colonne gauche — heure verticale + service */}
-              <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 56 }}>
-                <div className="flex h-full items-center justify-center gap-2 px-2">
-                  <span
-                    className={cn("text-[10px] font-thin tabular-nums tracking-widest select-none", svc.text)}
-                    style={{ writingMode: "vertical-lr", transform: "rotate(180deg)" }}
-                  >
+              {/* Colonne gauche — heure + point service */}
+              <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 64 }}>
+                <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+                  <span className={cn("text-[10px] font-thin tabular-nums tracking-wide select-none", svc.text)}>
                     {svc.startH}
                   </span>
                   <span className={cn("h-2 w-2 rounded-full shrink-0", svc.dot)} />
