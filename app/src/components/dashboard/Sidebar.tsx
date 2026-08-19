@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
-  LayoutDashboard,
   Users,
   Settings,
   ChevronLeft,
@@ -18,8 +17,7 @@ import { cn } from "@/lib/utils";
 const ACCOUNT = { nom: "Anna Vignaud", role: "Gérante" };
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/plannings", label: "Plannings", icon: CalendarDays, exact: false },
+  { href: "/dashboard/plannings", label: "Planning", icon: CalendarDays, exact: false },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users, exact: false },
   { href: "/dashboard/parametres", label: "Paramètres", icon: Settings, exact: false },
 ];

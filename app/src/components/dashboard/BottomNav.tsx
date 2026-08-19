@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, CalendarDays, Users, Settings } from "lucide-react";
+import { CalendarDays, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Accueil", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/plannings", label: "Planning", icon: CalendarDays, exact: false },
   { href: "/dashboard/equipe", label: "Équipe", icon: Users, exact: false },
   { href: "/dashboard/parametres", label: "Paramètres", icon: Settings, exact: false },
