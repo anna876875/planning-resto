@@ -95,6 +95,7 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
         {/* ── Lignes services ── */}
         <tbody>
           {SERVICES.map((svc, svcIdx) => (
+            <>
             <tr key={svc.key} className={cn(svcIdx < SERVICES.length - 1 && "border-b border-border/50")}>
 
               {/* Colonne gauche — embauche + coupure (si applicable) */}
@@ -154,6 +155,21 @@ export default function RevealGrid({ dateFrom, dateTo }: { dateFrom: string; dat
                 );
               })}
             </tr>
+
+            {/* Bande coupure entre Midi et Soir */}
+            {svc.key === "midi" && (
+              <tr key="coupure" className="border-b border-border/50">
+                <td className="bg-muted/40 py-2 px-4" style={{ width: 64 }}>
+                  <span className="text-[8px] font-thin tracking-widest text-muted-foreground/40 select-none">
+                    coupure
+                  </span>
+                </td>
+                {days.map(d => (
+                  <td key={d} className="bg-muted/25" />
+                ))}
+              </tr>
+            )}
+            </>
           ))}
         </tbody>
       </table>
