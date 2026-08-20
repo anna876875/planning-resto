@@ -117,6 +117,24 @@ function Days({ sel, set }: { sel: number[]; set: (v: number[]) => void }) {
   );
 }
 
+// ─── Question numérotée ──────────────────────────────────────────────────────
+
+function QN({ n, label, children, col = false }: {
+  n: number; label: string; children: React.ReactNode; col?: boolean;
+}) {
+  return (
+    <div className="border-b border-border/25 py-3">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 text-[10px] font-bold text-muted-foreground/40 w-4 shrink-0 tabular-nums">{n}.</span>
+        <div className={cn("flex-1", col ? "space-y-2" : "flex items-start justify-between gap-4")}>
+          <span className="text-[12px] font-medium leading-snug">{label}</span>
+          <div className={cn("flex items-center gap-1.5", col && "pl-0")}>{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const JOURS_TABLE = [
@@ -168,14 +186,26 @@ export default function ParametresPage() {
     set({ disponibilites: { ...ref.current.disponibilites, [day]: next } }, true);
   }
 
+  function toggleDay(dayIdx: number) {
+    const cur = ref.current.disponibilites[dayIdx] ?? [];
+    const isOpen = cur.length > 0;
+    const svcs: string[] = isOpen ? [] : [
+      ...(ref.current.services.matin.actif ? ["matin"] : []),
+      ...(ref.current.services.soir.actif  ? ["soir"]  : []),
+    ].filter(Boolean);
+    set({ disponibilites: { ...ref.current.disponibilites, [dayIdx]: svcs.length ? svcs : ["matin", "soir"] } }, true);
+  }
+
   const m = cfg.services.matin;
   const s = cfg.services.soir;
+
+  let q = 0; // compteur de questions
 
   return (
     <div className="px-4 py-4 md:px-6 max-w-lg">
 
       {/* Titre */}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">Configuration</h1>
         {saved && (
           <span className="flex items-center gap-1 text-[11px] text-emerald-600">
@@ -184,13 +214,34 @@ export default function ParametresPage() {
         )}
       </div>
 
-      {/* ── Services ────────────────────────────────────────────── */}
-      <S label="Services" />
+      {/* ── Q1 : Jours d'ouverture ───────────────────────────────── */}
+      <QN n={++q} label="Quels jours votre restaurant est-il ouvert ?" col>
+        <div className="flex flex-wrap gap-2 pt-0.5">
+          {JOURS_TABLE.map(({ idx, l }) => {
+            const open = (cfg.disponibilites[idx] ?? []).length > 0;
+            return (
+              <label key={idx} className="flex items-center gap-1.5 cursor-pointer select-none">
+                <button
+                  type="button"
+                  onClick={() => toggleDay(idx)}
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                    open ? "bg-primary border-primary" : "border-border hover:border-primary/40"
+                  )}
+                >
+                  {open && <Check className="h-2.5 w-2.5 text-white" />}
+                </button>
+                <span className="text-[12px] text-muted-foreground">{l}</span>
+              </label>
+            );
+          })}
+        </div>
+      </QN>
 
-      {/* Matin */}
-      <Q label="Service matin actif ?">
+      {/* ── Q2 : Service matin ───────────────────────────────────── */}
+      <QN n={++q} label="Le service matin est-il actif ?">
         <Cb on={m.actif} set={v => setSvc("matin", { actif: v }, true)} />
-      </Q>
+      </QN>
       {m.actif && <>
         <Q label="Horaires du matin" sub>
           <Ti value={m.debut} onChange={v => setSvc("matin", { debut: v })} onBlur={flush} />
@@ -213,10 +264,10 @@ export default function ParametresPage() {
         </>}
       </>}
 
-      {/* Soir */}
-      <Q label="Service soir actif ?">
+      {/* ── Q3 : Service soir ────────────────────────────────────── */}
+      <QN n={++q} label="Le service soir est-il actif ?">
         <Cb on={s.actif} set={v => setSvc("soir", { actif: v }, true)} />
-      </Q>
+      </QN>
       {s.actif && <>
         <Q label="Horaires du soir" sub>
           <Ti value={s.debut} onChange={v => setSvc("soir", { debut: v })} onBlur={flush} />
@@ -239,61 +290,23 @@ export default function ParametresPage() {
         </>}
       </>}
 
-      {/* Coupure */}
-      <Q label="Horaires de la coupure">
+      {/* ── Q4 : Coupure ─────────────────────────────────────────── */}
+      <QN n={++q} label="Horaires de la coupure inter-services">
         <Ti value={cfg.coupure.debut} onChange={v => set({ coupure: { ...cfg.coupure, debut: v } })} onBlur={flush} />
         <span className="text-[10px] text-muted-foreground/40">→</span>
         <Ti value={cfg.coupure.fin}   onChange={v => set({ coupure: { ...cfg.coupure, fin: v } })}   onBlur={flush} />
-      </Q>
+      </QN>
 
-      {/* ── Jours d'ouverture ────────────────────────────────────── */}
-      <S label="Jours d'ouverture" />
-
-      <div className="py-2">
-        {/* Header */}
-        <div className="grid grid-cols-[6rem_1fr_1fr] mb-1">
-          <span />
-          {(["Matin", "Soir"] as const).map(l => (
-            <span key={l} className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{l}</span>
-          ))}
-        </div>
-        {/* Rows */}
-        {JOURS_TABLE.map(({ idx, l }) => (
-          <div key={idx} className="grid grid-cols-[6rem_1fr_1fr] border-b border-border/20 py-1.5">
-            <span className="text-[12px] text-muted-foreground">{l}</span>
-            {(["matin", "soir"] as const).map(svc => {
-              const on = (cfg.disponibilites[idx] ?? []).includes(svc);
-              return (
-                <div key={svc} className="flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => toggleDispo(idx, svc)}
-                    className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded border transition-colors",
-                      on ? "bg-primary border-primary" : "border-border hover:border-primary/40"
-                    )}
-                  >
-                    {on && <Check className="h-2.5 w-2.5 text-white" />}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Planning ─────────────────────────────────────────────── */}
-      <S label="Règles de planning" />
-
-      <Q label="Jours de repos par semaine">
+      {/* ── Q5 : Repos & équité ──────────────────────────────────── */}
+      <QN n={++q} label="Jours de repos par semaine">
         <Ni value={cfg.joursReposParSemaine} min={1} max={3} unit="j" onChange={v => set({ joursReposParSemaine: v })} onBlur={flush} />
-      </Q>
-      <Q label="Répartition équitable des weekends ?">
+      </QN>
+      <QN n={++q} label="Répartition équitable des weekends ?">
         <Cb on={cfg.weekendEquitable} set={v => set({ weekendEquitable: v }, true)} />
-      </Q>
-      <Q label="Répartition équitable des repos ?">
+      </QN>
+      <QN n={++q} label="Répartition équitable des repos ?">
         <Cb on={cfg.reposEquitable} set={v => set({ reposEquitable: v }, true)} />
-      </Q>
+      </QN>
       {cfg.reposEquitable && <>
         <Q label="Limiter les repos consécutifs ?" sub>
           <Cb on={cfg.reposConsecutifsMax > 0} set={v => set({ reposConsecutifsMax: v ? 2 : 0 }, true)} />
@@ -304,89 +317,76 @@ export default function ParametresPage() {
           </Q>
         )}
       </>}
-      <Q label="Horaires fixes ?">
+      <QN n={++q} label="Horaires fixes ?">
         <Cb on={cfg.horairesFixes} set={v => set({ horairesFixes: v }, true)} />
-      </Q>
+      </QN>
 
-      {/* ── Postes & avantages ───────────────────────────────────── */}
-      <S label="Postes & avantages" />
-
-      {/* Liste des postes */}
-      <div className="border-b border-border/25 py-2.5 space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {cfg.postes.map(p => (
-            <span key={p} className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2.5 py-0.5 text-[11px]">
-              {p}
-              <button type="button" onClick={() => {
-                const next = { postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) };
-                set(next, true);
-              }}>
-                <X className="h-2.5 w-2.5 text-muted-foreground/50 hover:text-foreground" />
-              </button>
-            </span>
-          ))}
+      {/* ── Q+ : Postes ──────────────────────────────────────────── */}
+      <QN n={++q} label="Quels postes sont présents ?" col>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {cfg.postes.map(p => (
+              <span key={p} className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2.5 py-0.5 text-[11px]">
+                {p}
+                <button type="button" onClick={() => set({ postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) }, true)}>
+                  <X className="h-2.5 w-2.5 text-muted-foreground/50 hover:text-foreground" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              value={newPoste}
+              onChange={e => setNewPoste(e.target.value)}
+              onKeyDown={e => {
+                if (e.key !== "Enter") return;
+                const t = newPoste.trim();
+                if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+              }}
+              placeholder="Ajouter un poste…"
+              className="flex-1 rounded-md border border-border/40 bg-background px-2.5 py-1 text-[12px] placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring/30"
+            />
+            <button
+              onClick={() => {
+                const t = newPoste.trim();
+                if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+              }}
+              className="rounded-md border border-border/40 px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
         </div>
-        <div className="flex gap-1.5">
-          <input
-            value={newPoste}
-            onChange={e => setNewPoste(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && (() => {
-              const t = newPoste.trim();
-              if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
-            })()}
-            placeholder="Ajouter un poste…"
-            className="flex-1 rounded-md border border-border/40 bg-background px-2.5 py-1 text-[12px] placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring/30"
-          />
-          <button
-            onClick={() => {
-              const t = newPoste.trim();
-              if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
-            }}
-            className="rounded-md border border-border/40 px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
+      </QN>
 
-      <Q label="Les postes tournent-ils ?">
+      <QN n={++q} label="Les postes tournent-ils ?">
         <Cb on={cfg.postesTournent} set={v => set({ postesTournent: v }, true)} />
-      </Q>
+      </QN>
       {cfg.postesTournent && (
         <Q label="Lesquels ?" sub>
           <div className="flex flex-wrap gap-1">
             {cfg.postes.map(p => {
               const on = cfg.postesTournants.includes(p);
               return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    const list = on ? cfg.postesTournants.filter(x => x !== p) : [...cfg.postesTournants, p];
-                    set({ postesTournants: list }, true);
-                  }}
-                  className={cn(
-                    "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
-                    on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {p}
-                </button>
+                <button key={p} type="button"
+                  onClick={() => set({ postesTournants: on ? cfg.postesTournants.filter(x => x !== p) : [...cfg.postesTournants, p] }, true)}
+                  className={cn("rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+                    on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+                >{p}</button>
               );
             })}
           </div>
         </Q>
       )}
-      <Q label="Repas du personnel inclus ?">
+
+      <QN n={++q} label="Repas du personnel inclus ?">
         <Cb on={cfg.repasPersonnel} set={v => set({ repasPersonnel: v }, true)} />
-      </Q>
+      </QN>
 
-      {/* ── Contraintes légales ──────────────────────────────────── */}
-      <S label="Contraintes légales" />
-
-      <Q label="Personnaliser les contraintes ?">
+      {/* ── Q+ : Légal ───────────────────────────────────────────── */}
+      <QN n={++q} label="Personnaliser les contraintes légales ?">
         <Cb on={showLegal} set={setShowLegal} />
-      </Q>
+      </QN>
       {showLegal && <>
         <Q label="Repos minimum entre deux services" sub>
           <Ni value={cfg.reposEntreServicesH} min={8} max={16} unit="h" onChange={v => set({ reposEntreServicesH: v })} onBlur={flush} />
