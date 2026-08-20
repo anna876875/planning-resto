@@ -1,80 +1,50 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Check, Plus, X, Clock, Users, CalendarDays, Briefcase, UtensilsCrossed } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef } from "react";
+import { Check, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { loadConfig, saveConfig, DEFAULT_CONFIG, type PlanningConfig, type ServiceConfig } from "@/lib/planning/config";
+import {
+  loadConfig, saveConfig, DEFAULT_CONFIG,
+  type PlanningConfig, type ServiceConfig,
+} from "@/lib/planning/config";
 
-// ─── Tabs ────────────────────────────────────────────────────────────────────
+// ─── Primitives ──────────────────────────────────────────────────────────────
 
-const TABS = [
-  { key: "services",       label: "Horaires",       icon: Clock           },
-  { key: "equipe",         label: "Équipe",          icon: Users           },
-  { key: "disponibilites", label: "Disponibilités",  icon: CalendarDays    },
-  { key: "postes",         label: "Postes",          icon: Briefcase       },
-  { key: "avantages",      label: "Avantages",       icon: UtensilsCrossed },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
+function Cb({ on, set }: { on: boolean; set: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => set(!on)}
+      className={cn(
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+        on ? "bg-primary border-primary" : "border-border hover:border-primary/40"
+      )}
+    >
+      {on && <Check className="h-2.5 w-2.5 text-white" />}
+    </button>
+  );
+}
 
-const JOURS = [
-  { idx: 1, label: "Lun" }, { idx: 2, label: "Mar" }, { idx: 3, label: "Mer" },
-  { idx: 4, label: "Jeu" }, { idx: 5, label: "Ven" }, { idx: 6, label: "Sam" },
-  { idx: 0, label: "Dim" },
-];
-
-// ─── Primitives UI ───────────────────────────────────────────────────────────
-
-function Checkbox({ checked, onChange, label, hint }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string;
+function Ti({ value, onChange, onBlur }: {
+  value: string; onChange: (v: string) => void; onBlur?: () => void;
 }) {
-  return (
-    <label className="flex items-start gap-2.5 cursor-pointer select-none">
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={cn(
-          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-          checked ? "bg-primary border-primary" : "border-border bg-background hover:border-primary/50"
-        )}
-      >
-        {checked && <Check className="h-2.5 w-2.5 text-white" />}
-      </button>
-      <div>
-        <span className="text-[13px] font-medium leading-snug">{label}</span>
-        {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
-      </div>
-    </label>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className="w-44 shrink-0 text-[12px] text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function TimeInput({ value, onChange, onBlur }: { value: string; onChange: (v: string) => void; onBlur?: () => void }) {
   return (
     <input
       type="time"
       value={value}
       onChange={e => onChange(e.target.value)}
       onBlur={onBlur}
-      className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/50"
+      className="w-[5.5rem] rounded-md bg-muted/40 px-2 py-0.5 text-[12px] tabular-nums focus:outline-none focus:ring-1 focus:ring-ring/40 focus:bg-background"
     />
   );
 }
 
-function NumInput({ value, onChange, onBlur, min = 1, max = 99, unit, width = "w-14" }: {
+function Ni({ value, onChange, onBlur, min = 1, max = 99, unit, w = "w-10" }: {
   value: number; onChange: (v: number) => void; onBlur?: () => void;
-  min?: number; max?: number; unit?: string; width?: string;
+  min?: number; max?: number; unit?: string; w?: string;
 }) {
   return (
-    <span className="flex items-center gap-1.5">
+    <>
       <input
         type="number"
         value={value}
@@ -82,29 +52,64 @@ function NumInput({ value, onChange, onBlur, min = 1, max = 99, unit, width = "w
         max={max}
         onChange={e => onChange(Number(e.target.value))}
         onBlur={onBlur}
-        className={cn("rounded-lg border border-border bg-background px-2.5 py-1.5 text-center text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/50", width)}
+        className={cn("rounded-md bg-muted/40 px-2 py-0.5 text-center text-[12px] tabular-nums focus:outline-none focus:ring-1 focus:ring-ring/40 focus:bg-background", w)}
       />
-      {unit && <span className="text-[12px] text-muted-foreground">{unit}</span>}
-    </span>
+      {unit && <span className="text-[11px] text-muted-foreground">{unit}</span>}
+    </>
   );
 }
 
-function DayPicker({ selected, onChange }: { selected: number[]; onChange: (v: number[]) => void }) {
+// Question row — label left, control right
+function Q({ label, sub = false, sub2 = false, children }: {
+  label: string; sub?: boolean; sub2?: boolean; children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {JOURS.map(({ idx, label }) => {
-        const on = selected.includes(idx);
+    <div className={cn(
+      "flex min-h-[2.25rem] items-center justify-between gap-4 border-b border-border/25 py-1.5",
+      sub2 ? "pl-10" : sub ? "pl-5" : ""
+    )}>
+      <span className={cn(
+        "text-[12px] leading-snug",
+        sub2 ? "text-muted-foreground/70" : sub ? "text-muted-foreground" : "font-medium"
+      )}>
+        {label}
+      </span>
+      <div className="shrink-0 flex items-center gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+// Section header
+function S({ label }: { label: string }) {
+  return (
+    <p className="pt-6 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+      {label}
+    </p>
+  );
+}
+
+// Day pills (2-letter, compact)
+const JOURS_SHORT = [
+  { idx: 1, s: "Lu" }, { idx: 2, s: "Ma" }, { idx: 3, s: "Me" },
+  { idx: 4, s: "Je" }, { idx: 5, s: "Ve" }, { idx: 6, s: "Sa" },
+  { idx: 0, s: "Di" },
+];
+function Days({ sel, set }: { sel: number[]; set: (v: number[]) => void }) {
+  return (
+    <div className="flex gap-1">
+      {JOURS_SHORT.map(({ idx, s }) => {
+        const on = sel.includes(idx);
         return (
           <button
             key={idx}
             type="button"
-            onClick={() => onChange(on ? selected.filter(d => d !== idx) : [...selected, idx])}
+            onClick={() => set(on ? sel.filter(d => d !== idx) : [...sel, idx])}
             className={cn(
-              "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
-              on ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+              "rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors",
+              on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
             )}
           >
-            {label}
+            {s}
           </button>
         );
       })}
@@ -112,403 +117,287 @@ function DayPicker({ selected, onChange }: { selected: number[]; onChange: (v: n
   );
 }
 
-// ─── Bloc service (Matin / Soir) ─────────────────────────────────────────────
-
-function ServiceBlock({ svcKey, svc, onUpdate }: {
-  svcKey: "matin" | "soir";
-  svc: ServiceConfig;
-  onUpdate: (patch: Partial<ServiceConfig>, save?: boolean) => void;
-}) {
-  const label      = svcKey === "matin" ? "Matin" : "Soir";
-  const hasAffluence = svc.joursAffluence.length > 0;
-
-  return (
-    <div className="rounded-xl border border-border bg-card mb-3">
-      {/* Activation */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <Checkbox
-          checked={svc.actif}
-          onChange={v => onUpdate({ actif: v }, true)}
-          label={label}
-        />
-      </div>
-
-      {svc.actif && (
-        <div className="px-4 py-3 space-y-2">
-          {/* Horaires */}
-          <Field label="Horaires du service">
-            <TimeInput value={svc.debut} onChange={v => onUpdate({ debut: v })} onBlur={() => onUpdate({}, true)} />
-            <span className="text-muted-foreground/50 text-xs">→</span>
-            <TimeInput value={svc.fin} onChange={v => onUpdate({ fin: v })} onBlur={() => onUpdate({}, true)} />
-          </Field>
-
-          {/* Effectif de base */}
-          <Field label="Effectif par service">
-            <NumInput value={svc.effectifStable} min={1} max={30} unit="personnes"
-              onChange={v => onUpdate({ effectifStable: v })} onBlur={() => onUpdate({}, true)} />
-          </Field>
-
-          {/* Affluence — checkbox reveal */}
-          <div className="pt-2 space-y-3">
-            <Checkbox
-              checked={hasAffluence}
-              onChange={v => onUpdate({ joursAffluence: v ? [5, 6] : [] }, true)}
-              label="Jours d'affluence spécifiques"
-              hint="Certains jours nécessitent plus de monde"
-            />
-
-            {hasAffluence && (
-              <div className="ml-6 space-y-2.5 border-l border-border/50 pl-4">
-                <div className="space-y-1">
-                  <p className="text-[11px] text-muted-foreground">Jours concernés</p>
-                  <DayPicker selected={svc.joursAffluence} onChange={days => onUpdate({ joursAffluence: days }, true)} />
-                </div>
-                <Field label="Effectif ces jours-là">
-                  <NumInput value={svc.effectifAffluence} min={svc.effectifStable} max={30} unit="personnes"
-                    onChange={v => onUpdate({ effectifAffluence: v })} onBlur={() => onUpdate({}, true)} />
-                </Field>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
+
+const JOURS_TABLE = [
+  { idx: 1, l: "Lun" }, { idx: 2, l: "Mar" }, { idx: 3, l: "Mer" },
+  { idx: 4, l: "Jeu" }, { idx: 5, l: "Ven" }, { idx: 6, l: "Sam" },
+  { idx: 0, l: "Dim" },
+];
 
 export default function ParametresPage() {
   const [cfg, setCfg]           = useState<PlanningConfig>(DEFAULT_CONFIG);
-  const [tab, setTab]           = useState<TabKey>("services");
   const [saved, setSaved]       = useState(false);
-  const [newPoste, setNewPoste] = useState("");
-  // états de révélation dans l'onglet Équipe
   const [showLegal, setShowLegal] = useState(false);
+  const [newPoste, setNewPoste] = useState("");
+  const ref = useRef<PlanningConfig>(DEFAULT_CONFIG);
 
-  useEffect(() => { setCfg(loadConfig()); }, []);
+  useEffect(() => {
+    const c = loadConfig();
+    ref.current = c;
+    setCfg(c);
+  }, []);
 
   function persist(next: PlanningConfig) {
     saveConfig(next);
     setSaved(true);
-    setTimeout(() => setSaved(false), 1200);
+    setTimeout(() => setSaved(false), 1100);
   }
 
-  function update(patch: Partial<PlanningConfig>, save = false) {
-    setCfg(prev => {
-      const next = { ...prev, ...patch };
-      if (save) persist(next);
-      return next;
-    });
+  // patch top-level fields
+  function set(patch: Partial<PlanningConfig>, now = false) {
+    const next = { ...ref.current, ...patch };
+    ref.current = next;
+    setCfg(next);
+    if (now) persist(next);
   }
 
-  function updateService(key: "matin" | "soir", patch: Partial<ServiceConfig>, save = false) {
-    setCfg(prev => {
-      const next = { ...prev, services: { ...prev.services, [key]: { ...prev.services[key], ...patch } } };
-      if (save) persist(next);
-      return next;
-    });
+  // patch a service
+  function setSvc(key: "matin" | "soir", patch: Partial<ServiceConfig>, now = false) {
+    const next = { ...ref.current, services: { ...ref.current.services, [key]: { ...ref.current.services[key], ...patch } } };
+    ref.current = next;
+    setCfg(next);
+    if (now) persist(next);
   }
 
-  function toggleDisponibilite(dayIdx: number, svcKey: string) {
-    setCfg(prev => {
-      const cur  = prev.disponibilites[dayIdx] ?? [];
-      const next = cur.includes(svcKey) ? cur.filter(s => s !== svcKey) : [...cur, svcKey];
-      const updated = { ...prev, disponibilites: { ...prev.disponibilites, [dayIdx]: next } };
-      persist(updated);
-      return updated;
-    });
+  function flush() { persist(ref.current); }
+
+  function toggleDispo(day: number, svc: string) {
+    const cur = ref.current.disponibilites[day] ?? [];
+    const next = cur.includes(svc) ? cur.filter(s => s !== svc) : [...cur, svc];
+    set({ disponibilites: { ...ref.current.disponibilites, [day]: next } }, true);
   }
 
-  function addPoste() {
-    const t = newPoste.trim();
-    if (!t || cfg.postes.includes(t)) return;
-    const next = { ...cfg, postes: [...cfg.postes, t] };
-    setCfg(next); persist(next); setNewPoste("");
-  }
-
-  function removePoste(p: string) {
-    const next = { ...cfg, postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) };
-    setCfg(next); persist(next);
-  }
-
-  function toggleTournant(p: string) {
-    const list = cfg.postesTournants.includes(p)
-      ? cfg.postesTournants.filter(x => x !== p)
-      : [...cfg.postesTournants, p];
-    const next = { ...cfg, postesTournants: list };
-    setCfg(next); persist(next);
-  }
+  const m = cfg.services.matin;
+  const s = cfg.services.soir;
 
   return (
-    <div className="flex flex-col px-4 py-4 md:px-6">
+    <div className="px-4 py-4 md:px-6 max-w-lg">
 
-      {/* En-tête */}
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Configuration</h1>
+      {/* Titre */}
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-xl font-bold tracking-tight">Configuration</h1>
         {saved && (
-          <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700">
+          <span className="flex items-center gap-1 text-[11px] text-emerald-600">
             <Check className="h-3 w-3" /> Enregistré
           </span>
         )}
       </div>
 
-      {/* Tab bar */}
-      <div className="mb-6 flex gap-0.5 overflow-x-auto border-b border-border">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 border-b-2 px-3 pb-3 pt-1 text-[12px] font-medium transition-colors",
-              tab === key
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
+      {/* ── Services ────────────────────────────────────────────── */}
+      <S label="Services" />
+
+      {/* Matin */}
+      <Q label="Service matin actif ?">
+        <Cb on={m.actif} set={v => setSvc("matin", { actif: v }, true)} />
+      </Q>
+      {m.actif && <>
+        <Q label="Horaires du matin" sub>
+          <Ti value={m.debut} onChange={v => setSvc("matin", { debut: v })} onBlur={flush} />
+          <span className="text-[10px] text-muted-foreground/40">→</span>
+          <Ti value={m.fin}   onChange={v => setSvc("matin", { fin: v })}   onBlur={flush} />
+        </Q>
+        <Q label="Effectif par service" sub>
+          <Ni value={m.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("matin", { effectifStable: v })} onBlur={flush} />
+        </Q>
+        <Q label="Jours d'affluence ?" sub>
+          <Cb on={m.joursAffluence.length > 0} set={v => setSvc("matin", { joursAffluence: v ? [5, 6] : [] }, true)} />
+        </Q>
+        {m.joursAffluence.length > 0 && <>
+          <Q label="Jours concernés" sub2>
+            <Days sel={m.joursAffluence} set={d => setSvc("matin", { joursAffluence: d }, true)} />
+          </Q>
+          <Q label="Effectif ces jours-là" sub2>
+            <Ni value={m.effectifAffluence} min={m.effectifStable} max={30} unit="pers." onChange={v => setSvc("matin", { effectifAffluence: v })} onBlur={flush} />
+          </Q>
+        </>}
+      </>}
+
+      {/* Soir */}
+      <Q label="Service soir actif ?">
+        <Cb on={s.actif} set={v => setSvc("soir", { actif: v }, true)} />
+      </Q>
+      {s.actif && <>
+        <Q label="Horaires du soir" sub>
+          <Ti value={s.debut} onChange={v => setSvc("soir", { debut: v })} onBlur={flush} />
+          <span className="text-[10px] text-muted-foreground/40">→</span>
+          <Ti value={s.fin}   onChange={v => setSvc("soir", { fin: v })}   onBlur={flush} />
+        </Q>
+        <Q label="Effectif par service" sub>
+          <Ni value={s.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("soir", { effectifStable: v })} onBlur={flush} />
+        </Q>
+        <Q label="Jours d'affluence ?" sub>
+          <Cb on={s.joursAffluence.length > 0} set={v => setSvc("soir", { joursAffluence: v ? [5, 6] : [] }, true)} />
+        </Q>
+        {s.joursAffluence.length > 0 && <>
+          <Q label="Jours concernés" sub2>
+            <Days sel={s.joursAffluence} set={d => setSvc("soir", { joursAffluence: d }, true)} />
+          </Q>
+          <Q label="Effectif ces jours-là" sub2>
+            <Ni value={s.effectifAffluence} min={s.effectifStable} max={30} unit="pers." onChange={v => setSvc("soir", { effectifAffluence: v })} onBlur={flush} />
+          </Q>
+        </>}
+      </>}
+
+      {/* Coupure */}
+      <Q label="Horaires de la coupure">
+        <Ti value={cfg.coupure.debut} onChange={v => set({ coupure: { ...cfg.coupure, debut: v } })} onBlur={flush} />
+        <span className="text-[10px] text-muted-foreground/40">→</span>
+        <Ti value={cfg.coupure.fin}   onChange={v => set({ coupure: { ...cfg.coupure, fin: v } })}   onBlur={flush} />
+      </Q>
+
+      {/* ── Jours d'ouverture ────────────────────────────────────── */}
+      <S label="Jours d'ouverture" />
+
+      <div className="py-2">
+        {/* Header */}
+        <div className="grid grid-cols-[6rem_1fr_1fr] mb-1">
+          <span />
+          {(["Matin", "Soir"] as const).map(l => (
+            <span key={l} className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">{l}</span>
+          ))}
+        </div>
+        {/* Rows */}
+        {JOURS_TABLE.map(({ idx, l }) => (
+          <div key={idx} className="grid grid-cols-[6rem_1fr_1fr] border-b border-border/20 py-1.5">
+            <span className="text-[12px] text-muted-foreground">{l}</span>
+            {(["matin", "soir"] as const).map(svc => {
+              const on = (cfg.disponibilites[idx] ?? []).includes(svc);
+              return (
+                <div key={svc} className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => toggleDispo(idx, svc)}
+                    className={cn(
+                      "flex h-4 w-4 items-center justify-center rounded border transition-colors",
+                      on ? "bg-primary border-primary" : "border-border hover:border-primary/40"
+                    )}
+                  >
+                    {on && <Check className="h-2.5 w-2.5 text-white" />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         ))}
       </div>
 
-      {/* ── HORAIRES ─────────────────────────────────────────────── */}
-      {tab === "services" && (
-        <div>
-          <p className="mb-4 text-[11px] text-muted-foreground">
-            Activez les services et définissez les horaires, effectifs et pics d'activité.
-          </p>
+      {/* ── Planning ─────────────────────────────────────────────── */}
+      <S label="Règles de planning" />
 
-          {(["matin", "soir"] as const).map(key => (
-            <ServiceBlock
-              key={key}
-              svcKey={key}
-              svc={cfg.services[key]}
-              onUpdate={(patch, save) => updateService(key, patch, save)}
-            />
+      <Q label="Jours de repos par semaine">
+        <Ni value={cfg.joursReposParSemaine} min={1} max={3} unit="j" onChange={v => set({ joursReposParSemaine: v })} onBlur={flush} />
+      </Q>
+      <Q label="Répartition équitable des weekends ?">
+        <Cb on={cfg.weekendEquitable} set={v => set({ weekendEquitable: v }, true)} />
+      </Q>
+      <Q label="Répartition équitable des repos ?">
+        <Cb on={cfg.reposEquitable} set={v => set({ reposEquitable: v }, true)} />
+      </Q>
+      {cfg.reposEquitable && <>
+        <Q label="Limiter les repos consécutifs ?" sub>
+          <Cb on={cfg.reposConsecutifsMax > 0} set={v => set({ reposConsecutifsMax: v ? 2 : 0 }, true)} />
+        </Q>
+        {cfg.reposConsecutifsMax > 0 && (
+          <Q label="Maximum" sub2>
+            <Ni value={cfg.reposConsecutifsMax} min={1} max={7} unit="jours" onChange={v => set({ reposConsecutifsMax: v })} onBlur={flush} />
+          </Q>
+        )}
+      </>}
+      <Q label="Horaires fixes ?">
+        <Cb on={cfg.horairesFixes} set={v => set({ horairesFixes: v }, true)} />
+      </Q>
+
+      {/* ── Postes & avantages ───────────────────────────────────── */}
+      <S label="Postes & avantages" />
+
+      {/* Liste des postes */}
+      <div className="border-b border-border/25 py-2.5 space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {cfg.postes.map(p => (
+            <span key={p} className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2.5 py-0.5 text-[11px]">
+              {p}
+              <button type="button" onClick={() => {
+                const next = { postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) };
+                set(next, true);
+              }}>
+                <X className="h-2.5 w-2.5 text-muted-foreground/50 hover:text-foreground" />
+              </button>
+            </span>
           ))}
-
-          {/* Coupure */}
-          <div className="mt-2 rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-            <p className="text-[12px] font-medium mb-2">Coupure inter-services</p>
-            <Field label="Période de fermeture">
-              <TimeInput value={cfg.coupure.debut} onChange={v => update({ coupure: { ...cfg.coupure, debut: v } })} onBlur={() => persist(cfg)} />
-              <span className="text-muted-foreground/50 text-xs">→</span>
-              <TimeInput value={cfg.coupure.fin} onChange={v => update({ coupure: { ...cfg.coupure, fin: v } })} onBlur={() => persist(cfg)} />
-            </Field>
-          </div>
         </div>
-      )}
-
-      {/* ── ÉQUIPE ───────────────────────────────────────────────── */}
-      {tab === "equipe" && (
-        <div className="space-y-5">
-          <p className="text-[11px] text-muted-foreground">Règles de repos et contraintes utilisées pour la génération.</p>
-
-          {/* Repos */}
-          <div className="space-y-4">
-            <Field label="Jours de repos / semaine">
-              <NumInput value={cfg.joursReposParSemaine} min={1} max={3}
-                onChange={v => update({ joursReposParSemaine: v })} onBlur={() => persist(cfg)} />
-            </Field>
-
-            <div className="space-y-3">
-              <Checkbox
-                checked={cfg.weekendEquitable}
-                onChange={v => update({ weekendEquitable: v }, true)}
-                label="Répartition équitable des weekends"
-                hint="Alterne les week-ends travaillés entre employés"
-              />
-
-              <Checkbox
-                checked={cfg.reposEquitable}
-                onChange={v => update({ reposEquitable: v }, true)}
-                label="Répartition équitable des repos"
-                hint="Équilibre les jours de repos sur le mois"
-              />
-
-              {cfg.reposEquitable && (
-                <div className="ml-6 border-l border-border/50 pl-4">
-                  <Checkbox
-                    checked={cfg.reposConsecutifsMax > 0}
-                    onChange={v => update({ reposConsecutifsMax: v ? 2 : 0 }, true)}
-                    label="Limiter les repos consécutifs"
-                    hint="Différent des congés payés"
-                  />
-                  {cfg.reposConsecutifsMax > 0 && (
-                    <div className="ml-6 mt-2">
-                      <Field label="Maximum">
-                        <NumInput value={cfg.reposConsecutifsMax} min={1} max={7} unit="jours d'affilée"
-                          onChange={v => update({ reposConsecutifsMax: v })} onBlur={() => persist(cfg)} />
-                      </Field>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contraintes légales */}
-          <div className="border-t border-border/40 pt-4 space-y-3">
-            <Checkbox
-              checked={showLegal}
-              onChange={setShowLegal}
-              label="Personnaliser les contraintes légales"
-              hint="Droit du travail FR — modifiez uniquement si votre convention collective le permet"
-            />
-
-            {showLegal && (
-              <div className="ml-6 border-l border-border/50 pl-4 space-y-2">
-                <Field label="Repos entre deux services">
-                  <NumInput value={cfg.reposEntreServicesH} min={8} max={16} unit="h min."
-                    onChange={v => update({ reposEntreServicesH: v })} onBlur={() => persist(cfg)} />
-                </Field>
-                <Field label="Jours consécutifs max">
-                  <NumInput value={cfg.joursConsecutifsMax} min={3} max={6} unit="jours"
-                    onChange={v => update({ joursConsecutifsMax: v })} onBlur={() => persist(cfg)} />
-                </Field>
-                <Field label="Heures contrat / semaine">
-                  <NumInput value={cfg.heuresContratHebdo} min={20} max={48} unit="h"
-                    onChange={v => update({ heuresContratHebdo: v })} onBlur={() => persist(cfg)} />
-                </Field>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── DISPONIBILITÉS ───────────────────────────────────────── */}
-      {tab === "disponibilites" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] text-muted-foreground">Jours et services d'ouverture de l'établissement.</p>
-            <Checkbox
-              checked={cfg.horairesFixes}
-              onChange={v => update({ horairesFixes: v }, true)}
-              label="Horaires fixes"
-            />
-          </div>
-
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Jour</th>
-                  {(["matin", "soir"] as const).map(s => (
-                    <th key={s} className="px-4 py-2.5 text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      {s === "matin" ? "Matin" : "Soir"}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {JOURS.map(({ idx, label }) => (
-                  <tr key={idx} className={cn("border-b border-border/40 last:border-0", idx === 0 && "bg-muted/10")}>
-                    <td className="px-4 py-3 text-[12px] font-medium">{label}</td>
-                    {(["matin", "soir"] as const).map(sKey => {
-                      const active = (cfg.disponibilites[idx] ?? []).includes(sKey);
-                      return (
-                        <td key={sKey} className="px-4 py-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => toggleDisponibilite(idx, sKey)}
-                            className={cn(
-                              "mx-auto flex h-4 w-4 items-center justify-center rounded border transition-colors",
-                              active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary/40"
-                            )}
-                          >
-                            {active && <Check className="h-2.5 w-2.5" />}
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── POSTES ───────────────────────────────────────────────── */}
-      {tab === "postes" && (
-        <div className="space-y-6">
-          <div>
-            <p className="mb-3 text-[11px] text-muted-foreground">Rôles présents dans votre établissement.</p>
-            <div className="mb-3 flex flex-wrap gap-2">
-              {cfg.postes.map(p => (
-                <span key={p} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-3 py-1 text-[12px] font-medium">
-                  {p}
-                  <button type="button" onClick={() => removePoste(p)} className="text-muted-foreground/50 hover:text-foreground">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newPoste}
-                onChange={e => setNewPoste(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && addPoste()}
-                placeholder="Ex : Runner, Caissier…"
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/50"
-              />
-              <Button variant="outline" size="sm" onClick={addPoste} className="h-8 gap-1">
-                <Plus className="h-3.5 w-3.5" /> Ajouter
-              </Button>
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-4 space-y-3">
-            <Checkbox
-              checked={cfg.postesTournent}
-              onChange={v => update({ postesTournent: v }, true)}
-              label="Les postes tournent"
-              hint="Ex : un serveur peut ponctuellement faire la plonge"
-            />
-
-            {cfg.postesTournent && (
-              <div className="ml-6 border-l border-border/50 pl-4">
-                <p className="mb-2 text-[11px] text-muted-foreground">Postes concernés par la rotation :</p>
-                <div className="flex flex-wrap gap-2">
-                  {cfg.postes.map(p => {
-                    const active = cfg.postesTournants.includes(p);
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => toggleTournant(p)}
-                        className={cn(
-                          "rounded-full border px-3 py-1 text-[12px] font-medium transition-colors",
-                          active
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:border-primary/40"
-                        )}
-                      >
-                        {p}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── AVANTAGES ────────────────────────────────────────────── */}
-      {tab === "avantages" && (
-        <div className="space-y-4">
-          <p className="text-[11px] text-muted-foreground">Avantages en nature pris en compte dans la génération.</p>
-          <Checkbox
-            checked={cfg.repasPersonnel}
-            onChange={v => update({ repasPersonnel: v }, true)}
-            label="Repas du personnel"
-            hint="Les repas pris en service sont pris en compte dans le calcul des avantages"
+        <div className="flex gap-1.5">
+          <input
+            value={newPoste}
+            onChange={e => setNewPoste(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && (() => {
+              const t = newPoste.trim();
+              if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+            })()}
+            placeholder="Ajouter un poste…"
+            className="flex-1 rounded-md border border-border/40 bg-background px-2.5 py-1 text-[12px] placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring/30"
           />
+          <button
+            onClick={() => {
+              const t = newPoste.trim();
+              if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+            }}
+            className="rounded-md border border-border/40 px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
         </div>
+      </div>
+
+      <Q label="Les postes tournent-ils ?">
+        <Cb on={cfg.postesTournent} set={v => set({ postesTournent: v }, true)} />
+      </Q>
+      {cfg.postesTournent && (
+        <Q label="Lesquels ?" sub>
+          <div className="flex flex-wrap gap-1">
+            {cfg.postes.map(p => {
+              const on = cfg.postesTournants.includes(p);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    const list = on ? cfg.postesTournants.filter(x => x !== p) : [...cfg.postesTournants, p];
+                    set({ postesTournants: list }, true);
+                  }}
+                  className={cn(
+                    "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+                    on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        </Q>
       )}
+      <Q label="Repas du personnel inclus ?">
+        <Cb on={cfg.repasPersonnel} set={v => set({ repasPersonnel: v }, true)} />
+      </Q>
+
+      {/* ── Contraintes légales ──────────────────────────────────── */}
+      <S label="Contraintes légales" />
+
+      <Q label="Personnaliser les contraintes ?">
+        <Cb on={showLegal} set={setShowLegal} />
+      </Q>
+      {showLegal && <>
+        <Q label="Repos minimum entre deux services" sub>
+          <Ni value={cfg.reposEntreServicesH} min={8} max={16} unit="h" onChange={v => set({ reposEntreServicesH: v })} onBlur={flush} />
+        </Q>
+        <Q label="Jours consécutifs maximum" sub>
+          <Ni value={cfg.joursConsecutifsMax} min={3} max={6} unit="j" onChange={v => set({ joursConsecutifsMax: v })} onBlur={flush} />
+        </Q>
+        <Q label="Heures contrat par semaine" sub>
+          <Ni value={cfg.heuresContratHebdo} min={20} max={48} unit="h" onChange={v => set({ heuresContratHebdo: v })} onBlur={flush} />
+        </Q>
+      </>}
 
     </div>
   );
