@@ -202,7 +202,7 @@ export default function ParametresPage() {
   let q = 0; // compteur de questions
 
   return (
-    <div className="px-4 py-4 md:px-6 max-w-lg">
+    <div className="px-4 py-4 md:px-6">
 
       {/* Titre */}
       <div className="mb-4 flex items-center justify-between">
