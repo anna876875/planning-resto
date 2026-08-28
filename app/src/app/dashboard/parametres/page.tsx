@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   loadConfig, saveConfig, DEFAULT_CONFIG,
@@ -16,11 +16,11 @@ function Cb({ on, set }: { on: boolean; set: (v: boolean) => void }) {
       type="button"
       onClick={() => set(!on)}
       className={cn(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-        on ? "bg-primary border-primary" : "border-border hover:border-primary/40"
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
+        on ? "bg-primary border-primary" : "border-border hover:border-primary/50"
       )}
     >
-      {on && <Check className="h-2.5 w-2.5 text-white" />}
+      {on && <Check className="h-3 w-3 text-white" />}
     </button>
   );
 }
@@ -34,12 +34,12 @@ function Ti({ value, onChange, onBlur }: {
       value={value}
       onChange={e => onChange(e.target.value)}
       onBlur={onBlur}
-      className="w-[5.5rem] rounded-md bg-muted/40 px-2 py-0.5 text-[12px] tabular-nums focus:outline-none focus:ring-1 focus:ring-ring/40 focus:bg-background"
+      className="w-24 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/40 focus:bg-background"
     />
   );
 }
 
-function Ni({ value, onChange, onBlur, min = 1, max = 99, unit, w = "w-10" }: {
+function Ni({ value, onChange, onBlur, min = 1, max = 99, unit, w = "w-16" }: {
   value: number; onChange: (v: number) => void; onBlur?: () => void;
   min?: number; max?: number; unit?: string; w?: string;
 }) {
@@ -52,85 +52,81 @@ function Ni({ value, onChange, onBlur, min = 1, max = 99, unit, w = "w-10" }: {
         max={max}
         onChange={e => onChange(Number(e.target.value))}
         onBlur={onBlur}
-        className={cn("rounded-md bg-muted/40 px-2 py-0.5 text-center text-[12px] tabular-nums focus:outline-none focus:ring-1 focus:ring-ring/40 focus:bg-background", w)}
+        className={cn("rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-center text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/40 focus:bg-background", w)}
       />
-      {unit && <span className="text-[11px] text-muted-foreground">{unit}</span>}
+      {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
     </>
   );
 }
 
-// Question row — label left, control right
+// Question row
 function Q({ label, sub = false, sub2 = false, children }: {
   label: string; sub?: boolean; sub2?: boolean; children: React.ReactNode;
 }) {
   return (
     <div className={cn(
-      "flex min-h-[2.25rem] items-center justify-between gap-4 border-b border-border/25 py-1.5",
-      sub2 ? "pl-10" : sub ? "pl-5" : ""
+      "flex min-h-12 items-center justify-between gap-6 border-b border-border/30 py-3",
+      sub2 ? "pl-12" : sub ? "pl-6" : ""
     )}>
       <span className={cn(
-        "text-[12px] leading-snug",
+        "text-sm leading-snug",
         sub2 ? "text-muted-foreground/70" : sub ? "text-muted-foreground" : "font-medium"
       )}>
         {label}
       </span>
-      <div className="shrink-0 flex items-center gap-1.5">{children}</div>
+      <div className="shrink-0 flex items-center gap-2">{children}</div>
     </div>
   );
 }
 
-// Section header
-function S({ label }: { label: string }) {
-  return (
-    <p className="pt-6 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-      {label}
-    </p>
-  );
-}
-
-// Day pills (2-letter, compact)
+// Day pills
 const JOURS_SHORT = [
-  { idx: 1, s: "Lu" }, { idx: 2, s: "Ma" }, { idx: 3, s: "Me" },
-  { idx: 4, s: "Je" }, { idx: 5, s: "Ve" }, { idx: 6, s: "Sa" },
-  { idx: 0, s: "Di" },
+  { idx: 1, s: "Lun" }, { idx: 2, s: "Mar" }, { idx: 3, s: "Mer" },
+  { idx: 4, s: "Jeu" }, { idx: 5, s: "Ven" }, { idx: 6, s: "Sam" },
+  { idx: 0, s: "Dim" },
 ];
 function Days({ sel, set }: { sel: number[]; set: (v: number[]) => void }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1.5">
       {JOURS_SHORT.map(({ idx, s }) => {
         const on = sel.includes(idx);
         return (
-          <button
-            key={idx}
-            type="button"
+          <button key={idx} type="button"
             onClick={() => set(on ? sel.filter(d => d !== idx) : [...sel, idx])}
             className={cn(
-              "rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors",
+              "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors",
               on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
             )}
-          >
-            {s}
-          </button>
+          >{s}</button>
         );
       })}
     </div>
   );
 }
 
-// ─── Question numérotée ──────────────────────────────────────────────────────
-
-function QN({ n, label, children, col = false }: {
-  n: number; label: string; children: React.ReactNode; col?: boolean;
+// Accordion
+function Accordion({ title, open, onToggle, children, summary }: {
+  title: string; open: boolean; onToggle: () => void;
+  children: React.ReactNode; summary?: string;
 }) {
   return (
-    <div className="border-b border-border/25 py-3">
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 text-[10px] font-bold text-muted-foreground/40 w-4 shrink-0 tabular-nums">{n}.</span>
-        <div className={cn("flex-1", col ? "space-y-2" : "flex items-start justify-between gap-4")}>
-          <span className="text-[12px] font-medium leading-snug">{label}</span>
-          <div className={cn("flex items-center gap-1.5", col && "pl-0")}>{children}</div>
+    <div className="mb-3 rounded-xl border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 bg-card hover:bg-muted/20 transition-colors"
+      >
+        <span className="text-base font-semibold">{title}</span>
+        <div className="flex items-center gap-3">
+          {summary && <span className="text-sm text-muted-foreground">{summary}</span>}
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
         </div>
-      </div>
+      </button>
+      {open && (
+        <div className="border-t border-border/40 px-5 pb-2">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -138,16 +134,17 @@ function QN({ n, label, children, col = false }: {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 const JOURS_TABLE = [
-  { idx: 1, l: "Lun" }, { idx: 2, l: "Mar" }, { idx: 3, l: "Mer" },
-  { idx: 4, l: "Jeu" }, { idx: 5, l: "Ven" }, { idx: 6, l: "Sam" },
-  { idx: 0, l: "Dim" },
+  { idx: 1, l: "Lundi" }, { idx: 2, l: "Mardi" }, { idx: 3, l: "Mercredi" },
+  { idx: 4, l: "Jeudi" }, { idx: 5, l: "Vendredi" }, { idx: 6, l: "Samedi" },
+  { idx: 0, l: "Dimanche" },
 ];
 
 export default function ParametresPage() {
-  const [cfg, setCfg]           = useState<PlanningConfig>(DEFAULT_CONFIG);
-  const [saved, setSaved]       = useState(false);
-  const [showLegal, setShowLegal] = useState(false);
-  const [newPoste, setNewPoste] = useState("");
+  const [cfg, setCfg]               = useState<PlanningConfig>(DEFAULT_CONFIG);
+  const [saved, setSaved]           = useState(false);
+  const [showLegal, setShowLegal]   = useState(false);
+  const [newPoste, setNewPoste]     = useState("");
+  const [open, setOpen]             = useState<string>("jours");
   const ref = useRef<PlanningConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
@@ -162,7 +159,6 @@ export default function ParametresPage() {
     setTimeout(() => setSaved(false), 1100);
   }
 
-  // patch top-level fields
   function set(patch: Partial<PlanningConfig>, now = false) {
     const next = { ...ref.current, ...patch };
     ref.current = next;
@@ -170,7 +166,6 @@ export default function ParametresPage() {
     if (now) persist(next);
   }
 
-  // patch a service
   function setSvc(key: "matin" | "soir", patch: Partial<ServiceConfig>, now = false) {
     const next = { ...ref.current, services: { ...ref.current.services, [key]: { ...ref.current.services[key], ...patch } } };
     ref.current = next;
@@ -180,224 +175,273 @@ export default function ParametresPage() {
 
   function flush() { persist(ref.current); }
 
-  function toggleDispo(day: number, svc: string) {
-    const cur = ref.current.disponibilites[day] ?? [];
-    const next = cur.includes(svc) ? cur.filter(s => s !== svc) : [...cur, svc];
-    set({ disponibilites: { ...ref.current.disponibilites, [day]: next } }, true);
-  }
-
   function toggleDay(dayIdx: number) {
-    const cur = ref.current.disponibilites[dayIdx] ?? [];
+    const cur   = ref.current.disponibilites[dayIdx] ?? [];
     const isOpen = cur.length > 0;
-    const svcs: string[] = isOpen ? [] : [
+    const svcs   = isOpen ? [] : [
       ...(ref.current.services.matin.actif ? ["matin"] : []),
       ...(ref.current.services.soir.actif  ? ["soir"]  : []),
-    ].filter(Boolean);
+    ];
     set({ disponibilites: { ...ref.current.disponibilites, [dayIdx]: svcs.length ? svcs : ["matin", "soir"] } }, true);
+  }
+
+  function toggle(key: string) {
+    setOpen(o => o === key ? "" : key);
   }
 
   const m = cfg.services.matin;
   const s = cfg.services.soir;
 
-  let q = 0; // compteur de questions
+  const joursOuverts = JOURS_TABLE.filter(({ idx }) => (cfg.disponibilites[idx] ?? []).length > 0).map(d => d.l).join(", ") || "Aucun";
 
   return (
     <div className="px-4 py-4 md:px-6">
 
       {/* Titre */}
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight">Configuration</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Configuration</h1>
         {saved && (
-          <span className="flex items-center gap-1 text-[11px] text-emerald-600">
-            <Check className="h-3 w-3" /> Enregistré
+          <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+            <Check className="h-4 w-4" /> Enregistré
           </span>
         )}
       </div>
 
-      {/* ── Q1 : Jours d'ouverture ───────────────────────────────── */}
-      <QN n={++q} label="Quels jours votre restaurant est-il ouvert ?" col>
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          {JOURS_TABLE.map(({ idx, l }) => {
-            const open = (cfg.disponibilites[idx] ?? []).length > 0;
-            return (
-              <label key={idx} className="flex items-center gap-1.5 cursor-pointer select-none">
-                <button
-                  type="button"
-                  onClick={() => toggleDay(idx)}
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                    open ? "bg-primary border-primary" : "border-border hover:border-primary/40"
-                  )}
-                >
-                  {open && <Check className="h-2.5 w-2.5 text-white" />}
-                </button>
-                <span className="text-[12px] text-muted-foreground">{l}</span>
-              </label>
-            );
-          })}
-        </div>
-      </QN>
-
-      {/* ── Q2 : Service matin ───────────────────────────────────── */}
-      <QN n={++q} label="Le service matin est-il actif ?">
-        <Cb on={m.actif} set={v => setSvc("matin", { actif: v }, true)} />
-      </QN>
-      {m.actif && <>
-        <Q label="Horaires du matin" sub>
-          <Ti value={m.debut} onChange={v => setSvc("matin", { debut: v })} onBlur={flush} />
-          <span className="text-[10px] text-muted-foreground/40">→</span>
-          <Ti value={m.fin}   onChange={v => setSvc("matin", { fin: v })}   onBlur={flush} />
-        </Q>
-        <Q label="Effectif par service" sub>
-          <Ni value={m.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("matin", { effectifStable: v })} onBlur={flush} />
-        </Q>
-        <Q label="Jours d'affluence ?" sub>
-          <Cb on={m.joursAffluence.length > 0} set={v => setSvc("matin", { joursAffluence: v ? [5, 6] : [] }, true)} />
-        </Q>
-        {m.joursAffluence.length > 0 && <>
-          <Q label="Jours concernés" sub2>
-            <Days sel={m.joursAffluence} set={d => setSvc("matin", { joursAffluence: d }, true)} />
-          </Q>
-          <Q label="Effectif ces jours-là" sub2>
-            <Ni value={m.effectifAffluence} min={m.effectifStable} max={30} unit="pers." onChange={v => setSvc("matin", { effectifAffluence: v })} onBlur={flush} />
-          </Q>
-        </>}
-      </>}
-
-      {/* ── Q3 : Service soir ────────────────────────────────────── */}
-      <QN n={++q} label="Le service soir est-il actif ?">
-        <Cb on={s.actif} set={v => setSvc("soir", { actif: v }, true)} />
-      </QN>
-      {s.actif && <>
-        <Q label="Horaires du soir" sub>
-          <Ti value={s.debut} onChange={v => setSvc("soir", { debut: v })} onBlur={flush} />
-          <span className="text-[10px] text-muted-foreground/40">→</span>
-          <Ti value={s.fin}   onChange={v => setSvc("soir", { fin: v })}   onBlur={flush} />
-        </Q>
-        <Q label="Effectif par service" sub>
-          <Ni value={s.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("soir", { effectifStable: v })} onBlur={flush} />
-        </Q>
-        <Q label="Jours d'affluence ?" sub>
-          <Cb on={s.joursAffluence.length > 0} set={v => setSvc("soir", { joursAffluence: v ? [5, 6] : [] }, true)} />
-        </Q>
-        {s.joursAffluence.length > 0 && <>
-          <Q label="Jours concernés" sub2>
-            <Days sel={s.joursAffluence} set={d => setSvc("soir", { joursAffluence: d }, true)} />
-          </Q>
-          <Q label="Effectif ces jours-là" sub2>
-            <Ni value={s.effectifAffluence} min={s.effectifStable} max={30} unit="pers." onChange={v => setSvc("soir", { effectifAffluence: v })} onBlur={flush} />
-          </Q>
-        </>}
-      </>}
-
-      {/* ── Q4 : Coupure ─────────────────────────────────────────── */}
-      <QN n={++q} label="Horaires de la coupure inter-services">
-        <Ti value={cfg.coupure.debut} onChange={v => set({ coupure: { ...cfg.coupure, debut: v } })} onBlur={flush} />
-        <span className="text-[10px] text-muted-foreground/40">→</span>
-        <Ti value={cfg.coupure.fin}   onChange={v => set({ coupure: { ...cfg.coupure, fin: v } })}   onBlur={flush} />
-      </QN>
-
-      {/* ── Q5 : Repos & équité ──────────────────────────────────── */}
-      <QN n={++q} label="Jours de repos par semaine">
-        <Ni value={cfg.joursReposParSemaine} min={1} max={3} unit="j" onChange={v => set({ joursReposParSemaine: v })} onBlur={flush} />
-      </QN>
-      <QN n={++q} label="Répartition équitable des weekends ?">
-        <Cb on={cfg.weekendEquitable} set={v => set({ weekendEquitable: v }, true)} />
-      </QN>
-      <QN n={++q} label="Répartition équitable des repos ?">
-        <Cb on={cfg.reposEquitable} set={v => set({ reposEquitable: v }, true)} />
-      </QN>
-      {cfg.reposEquitable && <>
-        <Q label="Limiter les repos consécutifs ?" sub>
-          <Cb on={cfg.reposConsecutifsMax > 0} set={v => set({ reposConsecutifsMax: v ? 2 : 0 }, true)} />
-        </Q>
-        {cfg.reposConsecutifsMax > 0 && (
-          <Q label="Maximum" sub2>
-            <Ni value={cfg.reposConsecutifsMax} min={1} max={7} unit="jours" onChange={v => set({ reposConsecutifsMax: v })} onBlur={flush} />
-          </Q>
-        )}
-      </>}
-      <QN n={++q} label="Horaires fixes ?">
-        <Cb on={cfg.horairesFixes} set={v => set({ horairesFixes: v }, true)} />
-      </QN>
-
-      {/* ── Q+ : Postes ──────────────────────────────────────────── */}
-      <QN n={++q} label="Quels postes sont présents ?" col>
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {cfg.postes.map(p => (
-              <span key={p} className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2.5 py-0.5 text-[11px]">
-                {p}
-                <button type="button" onClick={() => set({ postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) }, true)}>
-                  <X className="h-2.5 w-2.5 text-muted-foreground/50 hover:text-foreground" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-1.5">
-            <input
-              value={newPoste}
-              onChange={e => setNewPoste(e.target.value)}
-              onKeyDown={e => {
-                if (e.key !== "Enter") return;
-                const t = newPoste.trim();
-                if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
-              }}
-              placeholder="Ajouter un poste…"
-              className="flex-1 rounded-md border border-border/40 bg-background px-2.5 py-1 text-[12px] placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-ring/30"
-            />
-            <button
-              onClick={() => {
-                const t = newPoste.trim();
-                if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
-              }}
-              className="rounded-md border border-border/40 px-2.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-      </QN>
-
-      <QN n={++q} label="Les postes tournent-ils ?">
-        <Cb on={cfg.postesTournent} set={v => set({ postesTournent: v }, true)} />
-      </QN>
-      {cfg.postesTournent && (
-        <Q label="Lesquels ?" sub>
-          <div className="flex flex-wrap gap-1">
-            {cfg.postes.map(p => {
-              const on = cfg.postesTournants.includes(p);
+      {/* ── 1. Jours d'ouverture ─────────────────────────────────── */}
+      <Accordion
+        title="Jours d'ouverture"
+        open={open === "jours"}
+        onToggle={() => toggle("jours")}
+        summary={open !== "jours" ? joursOuverts : undefined}
+      >
+        <div className="py-4 space-y-4">
+          <p className="text-sm text-muted-foreground">Sélectionnez les jours où votre restaurant accueille des clients.</p>
+          <div className="flex flex-wrap gap-3">
+            {JOURS_TABLE.map(({ idx, l }) => {
+              const isOpen = (cfg.disponibilites[idx] ?? []).length > 0;
               return (
-                <button key={p} type="button"
-                  onClick={() => set({ postesTournants: on ? cfg.postesTournants.filter(x => x !== p) : [...cfg.postesTournants, p] }, true)}
-                  className={cn("rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
-                    on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
-                >{p}</button>
+                <label key={idx} className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <button
+                    type="button"
+                    onClick={() => toggleDay(idx)}
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
+                      isOpen ? "bg-primary border-primary" : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    {isOpen && <Check className="h-3 w-3 text-white" />}
+                  </button>
+                  <span className="text-sm font-medium">{l}</span>
+                </label>
               );
             })}
           </div>
-        </Q>
-      )}
+        </div>
+      </Accordion>
 
-      <QN n={++q} label="Repas du personnel inclus ?">
-        <Cb on={cfg.repasPersonnel} set={v => set({ repasPersonnel: v }, true)} />
-      </QN>
+      {/* ── 2. Services & Horaires ───────────────────────────────── */}
+      <Accordion
+        title="Services & Horaires"
+        open={open === "services"}
+        onToggle={() => toggle("services")}
+        summary={open !== "services" ? [m.actif && "Matin", s.actif && "Soir"].filter(Boolean).join(" · ") || "Aucun service" : undefined}
+      >
+        {/* Matin */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Matin</p>
+          <Q label="Service matin actif ?">
+            <Cb on={m.actif} set={v => setSvc("matin", { actif: v }, true)} />
+          </Q>
+          {m.actif && <>
+            <Q label="Horaires" sub>
+              <Ti value={m.debut} onChange={v => setSvc("matin", { debut: v })} onBlur={flush} />
+              <span className="text-sm text-muted-foreground/50">→</span>
+              <Ti value={m.fin}   onChange={v => setSvc("matin", { fin: v })}   onBlur={flush} />
+            </Q>
+            <Q label="Effectif par service" sub>
+              <Ni value={m.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("matin", { effectifStable: v })} onBlur={flush} />
+            </Q>
+            <Q label="Jours d'affluence ?" sub>
+              <Cb on={m.joursAffluence.length > 0} set={v => setSvc("matin", { joursAffluence: v ? [5, 6] : [] }, true)} />
+            </Q>
+            {m.joursAffluence.length > 0 && <>
+              <Q label="Jours concernés" sub2>
+                <Days sel={m.joursAffluence} set={d => setSvc("matin", { joursAffluence: d }, true)} />
+              </Q>
+              <Q label="Effectif ces jours-là" sub2>
+                <Ni value={m.effectifAffluence} min={m.effectifStable} max={30} unit="pers." onChange={v => setSvc("matin", { effectifAffluence: v })} onBlur={flush} />
+              </Q>
+            </>}
+          </>}
+        </div>
 
-      {/* ── Q+ : Légal ───────────────────────────────────────────── */}
-      <QN n={++q} label="Personnaliser les contraintes légales ?">
-        <Cb on={showLegal} set={setShowLegal} />
-      </QN>
-      {showLegal && <>
-        <Q label="Repos minimum entre deux services" sub>
-          <Ni value={cfg.reposEntreServicesH} min={8} max={16} unit="h" onChange={v => set({ reposEntreServicesH: v })} onBlur={flush} />
-        </Q>
-        <Q label="Jours consécutifs maximum" sub>
-          <Ni value={cfg.joursConsecutifsMax} min={3} max={6} unit="j" onChange={v => set({ joursConsecutifsMax: v })} onBlur={flush} />
-        </Q>
-        <Q label="Heures contrat par semaine" sub>
-          <Ni value={cfg.heuresContratHebdo} min={20} max={48} unit="h" onChange={v => set({ heuresContratHebdo: v })} onBlur={flush} />
-        </Q>
-      </>}
+        {/* Soir */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Soir</p>
+          <Q label="Service soir actif ?">
+            <Cb on={s.actif} set={v => setSvc("soir", { actif: v }, true)} />
+          </Q>
+          {s.actif && <>
+            <Q label="Horaires" sub>
+              <Ti value={s.debut} onChange={v => setSvc("soir", { debut: v })} onBlur={flush} />
+              <span className="text-sm text-muted-foreground/50">→</span>
+              <Ti value={s.fin}   onChange={v => setSvc("soir", { fin: v })}   onBlur={flush} />
+            </Q>
+            <Q label="Effectif par service" sub>
+              <Ni value={s.effectifStable} min={1} max={30} unit="pers." onChange={v => setSvc("soir", { effectifStable: v })} onBlur={flush} />
+            </Q>
+            <Q label="Jours d'affluence ?" sub>
+              <Cb on={s.joursAffluence.length > 0} set={v => setSvc("soir", { joursAffluence: v ? [5, 6] : [] }, true)} />
+            </Q>
+            {s.joursAffluence.length > 0 && <>
+              <Q label="Jours concernés" sub2>
+                <Days sel={s.joursAffluence} set={d => setSvc("soir", { joursAffluence: d }, true)} />
+              </Q>
+              <Q label="Effectif ces jours-là" sub2>
+                <Ni value={s.effectifAffluence} min={s.effectifStable} max={30} unit="pers." onChange={v => setSvc("soir", { effectifAffluence: v })} onBlur={flush} />
+              </Q>
+            </>}
+          </>}
+        </div>
+
+        {/* Coupure */}
+        <div className="pt-4 pb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">Coupure</p>
+          <Q label="Horaires de la coupure inter-services">
+            <Ti value={cfg.coupure.debut} onChange={v => set({ coupure: { ...cfg.coupure, debut: v } })} onBlur={flush} />
+            <span className="text-sm text-muted-foreground/50">→</span>
+            <Ti value={cfg.coupure.fin}   onChange={v => set({ coupure: { ...cfg.coupure, fin: v } })}   onBlur={flush} />
+          </Q>
+        </div>
+      </Accordion>
+
+      {/* ── 3. Planning & Repos ──────────────────────────────────── */}
+      <Accordion
+        title="Planning & Repos"
+        open={open === "planning"}
+        onToggle={() => toggle("planning")}
+        summary={open !== "planning" ? `${cfg.joursReposParSemaine} j de repos / sem.` : undefined}
+      >
+        <div className="py-2">
+          <Q label="Jours de repos par semaine">
+            <Ni value={cfg.joursReposParSemaine} min={1} max={3} unit="jours" onChange={v => set({ joursReposParSemaine: v })} onBlur={flush} />
+          </Q>
+          <Q label="Répartition équitable des weekends ?">
+            <Cb on={cfg.weekendEquitable} set={v => set({ weekendEquitable: v }, true)} />
+          </Q>
+          <Q label="Répartition équitable des repos ?">
+            <Cb on={cfg.reposEquitable} set={v => set({ reposEquitable: v }, true)} />
+          </Q>
+          {cfg.reposEquitable && <>
+            <Q label="Limiter les repos consécutifs ?" sub>
+              <Cb on={cfg.reposConsecutifsMax > 0} set={v => set({ reposConsecutifsMax: v ? 2 : 0 }, true)} />
+            </Q>
+            {cfg.reposConsecutifsMax > 0 && (
+              <Q label="Nombre maximum" sub2>
+                <Ni value={cfg.reposConsecutifsMax} min={1} max={7} unit="jours d'affilée" onChange={v => set({ reposConsecutifsMax: v })} onBlur={flush} />
+              </Q>
+            )}
+          </>}
+          <Q label="Horaires fixes ?">
+            <Cb on={cfg.horairesFixes} set={v => set({ horairesFixes: v }, true)} />
+          </Q>
+        </div>
+      </Accordion>
+
+      {/* ── 4. Postes & Avantages ────────────────────────────────── */}
+      <Accordion
+        title="Postes & Avantages"
+        open={open === "postes"}
+        onToggle={() => toggle("postes")}
+        summary={open !== "postes" ? `${cfg.postes.length} poste${cfg.postes.length > 1 ? "s" : ""}` : undefined}
+      >
+        <div className="py-4 space-y-4">
+          {/* Liste des postes */}
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Postes de l'établissement</p>
+            <div className="flex flex-wrap gap-2">
+              {cfg.postes.map(p => (
+                <span key={p} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm">
+                  {p}
+                  <button type="button" onClick={() => set({ postes: cfg.postes.filter(x => x !== p), postesTournants: cfg.postesTournants.filter(x => x !== p) }, true)}>
+                    <X className="h-3 w-3 text-muted-foreground/60 hover:text-foreground" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newPoste}
+                onChange={e => setNewPoste(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key !== "Enter") return;
+                  const t = newPoste.trim();
+                  if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+                }}
+                placeholder="Ajouter un poste…"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+              <button
+                onClick={() => {
+                  const t = newPoste.trim();
+                  if (t && !cfg.postes.includes(t)) { set({ postes: [...cfg.postes, t] }, true); setNewPoste(""); }
+                }}
+                className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="border-t border-border/30 pt-2">
+            <Q label="Les postes tournent-ils ?">
+              <Cb on={cfg.postesTournent} set={v => set({ postesTournent: v }, true)} />
+            </Q>
+            {cfg.postesTournent && (
+              <Q label="Postes concernés" sub>
+                <div className="flex flex-wrap gap-1.5">
+                  {cfg.postes.map(p => {
+                    const on = cfg.postesTournants.includes(p);
+                    return (
+                      <button key={p} type="button"
+                        onClick={() => set({ postesTournants: on ? cfg.postesTournants.filter(x => x !== p) : [...cfg.postesTournants, p] }, true)}
+                        className={cn("rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
+                          on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
+                      >{p}</button>
+                    );
+                  })}
+                </div>
+              </Q>
+            )}
+            <Q label="Repas du personnel inclus ?">
+              <Cb on={cfg.repasPersonnel} set={v => set({ repasPersonnel: v }, true)} />
+            </Q>
+          </div>
+        </div>
+      </Accordion>
+
+      {/* ── 5. Contraintes légales ───────────────────────────────── */}
+      <Accordion
+        title="Contraintes légales"
+        open={open === "legal"}
+        onToggle={() => toggle("legal")}
+        summary={open !== "legal" ? "Droit du travail FR" : undefined}
+      >
+        <div className="py-2">
+          <p className="text-sm text-muted-foreground py-3">
+            Modifiez uniquement si votre convention collective le permet.
+          </p>
+          <Q label="Repos minimum entre deux services">
+            <Ni value={cfg.reposEntreServicesH} min={8} max={16} unit="h min." onChange={v => set({ reposEntreServicesH: v })} onBlur={flush} />
+          </Q>
+          <Q label="Jours consécutifs maximum">
+            <Ni value={cfg.joursConsecutifsMax} min={3} max={6} unit="jours" onChange={v => set({ joursConsecutifsMax: v })} onBlur={flush} />
+          </Q>
+          <Q label="Heures contractuelles par semaine">
+            <Ni value={cfg.heuresContratHebdo} min={20} max={48} unit="h" onChange={v => set({ heuresContratHebdo: v })} onBlur={flush} />
+          </Q>
+        </div>
+      </Accordion>
 
     </div>
   );
