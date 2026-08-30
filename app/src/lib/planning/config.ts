@@ -13,29 +13,29 @@ export interface PlanningConfig {
   // ── Services ─────────────────────────────────────────────────
   services: {
     matin: ServiceConfig;
-    soir:  ServiceConfig;
+    soir: ServiceConfig;
   };
   coupure: { debut: string; fin: string };
 
   // ── Contraintes légales ───────────────────────────────────────
-  reposEntreServicesH:  number; // repos minimum entre 2 services (légal FR: 11h)
-  joursConsecutifsMax:  number; // max jours travaillés d'affilée (légal FR: 6)
+  reposEntreServicesH: number; // repos minimum entre 2 services (légal FR: 11h)
+  joursConsecutifsMax: number; // max jours travaillés d'affilée (légal FR: 6)
   joursReposParSemaine: number; // jours de repos/semaine (légal FR: min 1)
-  heuresContratHebdo:   number; // heures contractuelles / semaine (ex: 39h)
-  heuresMaxParJour:     number; // durée max d'un service (légal FR: 10h)
+  heuresContratHebdo: number; // heures contractuelles / semaine (ex: 39h)
+  heuresMaxParJour: number; // durée max d'un service (légal FR: 10h)
 
   // ── Équité & préférences ──────────────────────────────────────
-  weekendEquitable:    boolean;
-  reposEquitable:      boolean;
+  weekendEquitable: boolean;
+  reposEquitable: boolean;
   reposConsecutifsMax: number;
 
   // ── Disponibilités hebdomadaires ─────────────────────────────
-  horairesFixes:   boolean;
-  disponibilites:  Record<number, string[]>; // jsDay → ["matin","soir"]
+  horairesFixes: boolean;
+  disponibilites: Record<number, string[]>; // jsDay → ["matin","soir"]
 
   // ── Postes ───────────────────────────────────────────────────
-  postes:          string[];
-  postesTournent:  boolean;
+  postes: string[];
+  postesTournent: boolean;
   postesTournants: string[];
 
   // ── Avantages ────────────────────────────────────────────────
@@ -44,19 +44,33 @@ export interface PlanningConfig {
 
 export const DEFAULT_CONFIG: PlanningConfig = {
   services: {
-    matin: { actif: true, debut: "08:00", fin: "16:00", effectifStable: 4, effectifAffluence: 6,  joursAffluence: [5, 6] },
-    soir:  { actif: true, debut: "18:00", fin: "23:00", effectifStable: 6, effectifAffluence: 10, joursAffluence: [5, 6] },
+    matin: {
+      actif: true,
+      debut: "08:00",
+      fin: "16:00",
+      effectifStable: 4,
+      effectifAffluence: 6,
+      joursAffluence: [5, 6],
+    },
+    soir: {
+      actif: true,
+      debut: "18:00",
+      fin: "23:00",
+      effectifStable: 6,
+      effectifAffluence: 10,
+      joursAffluence: [5, 6],
+    },
   },
   coupure: { debut: "16:00", fin: "18:00" },
 
-  reposEntreServicesH:  11,
-  joursConsecutifsMax:  6,
+  reposEntreServicesH: 11,
+  joursConsecutifsMax: 6,
   joursReposParSemaine: 2,
-  heuresContratHebdo:   39,
-  heuresMaxParJour:     10,
+  heuresContratHebdo: 39,
+  heuresMaxParJour: 10,
 
-  weekendEquitable:    true,
-  reposEquitable:      true,
+  weekendEquitable: true,
+  reposEquitable: true,
   reposConsecutifsMax: 2,
 
   horairesFixes: true,
@@ -70,10 +84,10 @@ export const DEFAULT_CONFIG: PlanningConfig = {
     0: [],
   },
 
-  postes:          ["Chef cuisine", "Chef de partie", "Serveur", "Barman", "Plongeur"],
-  postesTournent:  false,
+  postes: ["Chef cuisine", "Chef de partie", "Serveur", "Barman", "Plongeur"],
+  postesTournent: false,
   postesTournants: [],
-  repasPersonnel:  true,
+  repasPersonnel: true,
 };
 
 const KEY = "planning_config";
@@ -89,11 +103,23 @@ export function loadConfig(): PlanningConfig {
       ...DEFAULT_CONFIG,
       ...saved,
       services: {
-        matin: { ...DEFAULT_CONFIG.services.matin, ...(savedSvcs.matin as Partial<ServiceConfig> ?? {}) },
-        soir:  { ...DEFAULT_CONFIG.services.soir,  ...(savedSvcs.soir  as Partial<ServiceConfig> ?? {}) },
+        matin: {
+          ...DEFAULT_CONFIG.services.matin,
+          ...((savedSvcs.matin as Partial<ServiceConfig>) ?? {}),
+        },
+        soir: {
+          ...DEFAULT_CONFIG.services.soir,
+          ...((savedSvcs.soir as Partial<ServiceConfig>) ?? {}),
+        },
       },
-      coupure:        { ...DEFAULT_CONFIG.coupure,        ...(saved.coupure        as Partial<PlanningConfig["coupure"]>        ?? {}) },
-      disponibilites: { ...DEFAULT_CONFIG.disponibilites, ...(saved.disponibilites as PlanningConfig["disponibilites"] ?? {}) },
+      coupure: {
+        ...DEFAULT_CONFIG.coupure,
+        ...((saved.coupure as Partial<PlanningConfig["coupure"]>) ?? {}),
+      },
+      disponibilites: {
+        ...DEFAULT_CONFIG.disponibilites,
+        ...((saved.disponibilites as PlanningConfig["disponibilites"]) ?? {}),
+      },
     } as PlanningConfig;
   } catch {
     return DEFAULT_CONFIG;

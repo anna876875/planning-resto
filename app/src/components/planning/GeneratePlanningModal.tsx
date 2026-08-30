@@ -57,7 +57,20 @@ function getMondaysInRange(from: string, to: string): string[] {
   return [...mondays];
 }
 
-const MOIS_COURT = ["jan","fév","mar","avr","mai","juin","juil","août","sep","oct","nov","déc"];
+const MOIS_COURT = [
+  "jan",
+  "fév",
+  "mar",
+  "avr",
+  "mai",
+  "juin",
+  "juil",
+  "août",
+  "sep",
+  "oct",
+  "nov",
+  "déc",
+];
 
 function formatDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -82,22 +95,25 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
   const nextMon = getNextMonday();
   const nextSun = addDays(nextMon, 6);
 
-  const [phase, setPhase]               = useState<Phase>("periode");
-  const [dateFrom, setDateFrom]         = useState(toISO(nextMon));
-  const [dateTo, setDateTo]             = useState(toISO(nextSun));
+  const [phase, setPhase] = useState<Phase>("periode");
+  const [dateFrom, setDateFrom] = useState(toISO(nextMon));
+  const [dateTo, setDateTo] = useState(toISO(nextSun));
   const [activeShortcut, setActiveShortcut] = useState<string>("La semaine prochaine");
-  const [showCustom, setShowCustom]     = useState(false);
-  const [loadingStep, setLoadingStep]   = useState(0);
-  const [revealIn, setRevealIn]         = useState(false);
+  const [showCustom, setShowCustom] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [revealIn, setRevealIn] = useState(false);
 
   const [generatedShifts, setGeneratedShifts] = useState<Shift[]>([]);
-  const [genResult, setGenResult]             = useState<GenerationResult | null>(null);
+  const [genResult, setGenResult] = useState<GenerationResult | null>(null);
   const generationDoneRef = useRef(false);
 
   /* analyse → génération */
   useEffect(() => {
     if (phase !== "analyse") return;
-    const t = setTimeout(() => { setLoadingStep(0); setPhase("generation"); }, 900);
+    const t = setTimeout(() => {
+      setLoadingStep(0);
+      setPhase("generation");
+    }, 900);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -113,7 +129,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
     // Lancer la vraie génération à mi-parcours
     if (loadingStep === 2 && !generationDoneRef.current) {
       generationDoneRef.current = true;
-      const cfg     = loadConfig();
+      const cfg = loadConfig();
       const mondays = getMondaysInRange(dateFrom, dateTo);
       const allShifts: Shift[] = [];
       const allWarnings: string[] = [];
@@ -129,38 +145,48 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
       }
 
       const mergedResult: GenerationResult | null = lastResult
-        ? { ...lastResult, shifts: allShifts, warnings: allWarnings, stats: { ...lastResult.stats, heuresTotal: totalHeures } }
+        ? {
+            ...lastResult,
+            shifts: allShifts,
+            warnings: allWarnings,
+            stats: { ...lastResult.stats, heuresTotal: totalHeures },
+          }
         : null;
 
       setGeneratedShifts(allShifts);
       setGenResult(mergedResult);
     }
 
-    const t = setTimeout(() => setLoadingStep(s => s + 1), 800);
+    const t = setTimeout(() => setLoadingStep((s) => s + 1), 800);
     return () => clearTimeout(t);
   }, [phase, loadingStep, dateFrom, dateTo]);
 
   /* fade-in */
   useEffect(() => {
-    if (phase !== "reveal") { setRevealIn(false); return; }
+    if (phase !== "reveal") {
+      setRevealIn(false);
+      return;
+    }
     const t = setTimeout(() => setRevealIn(true), 300);
     return () => clearTimeout(t);
   }, [phase]);
 
   /* escape */
-  const handleEsc = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
-  }, [onClose]);
+  const handleEsc = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose]
+  );
   useEffect(() => {
     document.addEventListener("keydown", handleEsc);
     return () => document.removeEventListener("keydown", handleEsc);
   }, [handleEsc]);
 
-  const progress    = Math.round((loadingStep / STEPS.length) * 100);
-  const periodLabel = dateFrom && dateTo
-    ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}`
-    : "Période non définie";
-  const dateValid   = dateFrom && dateTo && dateFrom <= dateTo;
+  const progress = Math.round((loadingStep / STEPS.length) * 100);
+  const periodLabel =
+    dateFrom && dateTo ? `${formatDate(dateFrom)} → ${formatDate(dateTo)}` : "Période non définie";
+  const dateValid = dateFrom && dateTo && dateFrom <= dateTo;
 
   function handleFromChange(val: string) {
     setActiveShortcut("Date personnalisée");
@@ -180,59 +206,78 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
-        className="bg-background rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col"
+        className="bg-background flex w-full flex-col overflow-hidden rounded-2xl shadow-2xl"
         style={{
           maxWidth: phase === "reveal" ? "min(1100px, 96vw)" : "448px",
-          height:   phase === "reveal" ? "clamp(540px, 88vh, 860px)" : "auto",
-          transition: "max-width 0.55s cubic-bezier(0.4,0,0.2,1), height 0.55s cubic-bezier(0.4,0,0.2,1)",
+          height: phase === "reveal" ? "clamp(540px, 88vh, 860px)" : "auto",
+          transition:
+            "max-width 0.55s cubic-bezier(0.4,0,0.2,1), height 0.55s cubic-bezier(0.4,0,0.2,1)",
         }}
       >
-
         {/* ═══════════════  PHASE 0 — PÉRIODE  ═══════════════ */}
         {phase === "periode" && (
           <>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="border-border flex items-center justify-between border-b px-5 py-4">
               <h2 className="text-base font-semibold tracking-tight">Générer le planning</h2>
               <button
                 onClick={onClose}
-                className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
+                className="hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
               >
-                <X className="h-4 w-4 text-muted-foreground" />
+                <X className="text-muted-foreground h-4 w-4" />
               </button>
             </div>
 
-            <div className="px-5 py-5 space-y-4">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="space-y-4 px-5 py-5">
+              <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
                 Choisir la période
               </p>
 
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: "La semaine prochaine", fn: () => {
-                    const m = getNextMonday();
-                    setDateFrom(toISO(m)); setDateTo(toISO(addDays(m, 6)));
-                    setActiveShortcut("La semaine prochaine"); setShowCustom(false);
-                  }},
-                  { label: "Les 2 prochaines semaines", fn: () => {
-                    const m = getNextMonday();
-                    setDateFrom(toISO(m)); setDateTo(toISO(addDays(m, 13)));
-                    setActiveShortcut("Les 2 prochaines semaines"); setShowCustom(false);
-                  }},
-                  { label: "Ce mois-ci", fn: () => {
-                    const now = new Date();
-                    setDateFrom(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
-                    setDateTo(toISO(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
-                    setActiveShortcut("Ce mois-ci"); setShowCustom(false);
-                  }},
-                  { label: "Date personnalisée", fn: () => {
-                    setShowCustom(c => !c);
-                    setActiveShortcut("Date personnalisée");
-                  }},
-                ].map(s => {
+                  {
+                    label: "La semaine prochaine",
+                    fn: () => {
+                      const m = getNextMonday();
+                      setDateFrom(toISO(m));
+                      setDateTo(toISO(addDays(m, 6)));
+                      setActiveShortcut("La semaine prochaine");
+                      setShowCustom(false);
+                    },
+                  },
+                  {
+                    label: "Les 2 prochaines semaines",
+                    fn: () => {
+                      const m = getNextMonday();
+                      setDateFrom(toISO(m));
+                      setDateTo(toISO(addDays(m, 13)));
+                      setActiveShortcut("Les 2 prochaines semaines");
+                      setShowCustom(false);
+                    },
+                  },
+                  {
+                    label: "Ce mois-ci",
+                    fn: () => {
+                      const now = new Date();
+                      setDateFrom(toISO(new Date(now.getFullYear(), now.getMonth(), 1)));
+                      setDateTo(toISO(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
+                      setActiveShortcut("Ce mois-ci");
+                      setShowCustom(false);
+                    },
+                  },
+                  {
+                    label: "Date personnalisée",
+                    fn: () => {
+                      setShowCustom((c) => !c);
+                      setActiveShortcut("Date personnalisée");
+                    },
+                  },
+                ].map((s) => {
                   const isActive = activeShortcut === s.label;
                   return (
                     <button
@@ -240,7 +285,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                       type="button"
                       onClick={s.fn}
                       className={cn(
-                        "rounded-xl border px-3 py-3 text-xs font-medium transition-colors text-center leading-snug",
+                        "rounded-xl border px-3 py-3 text-center text-xs leading-snug font-medium transition-colors",
                         isActive
                           ? "border-primary bg-primary/5 text-primary"
                           : "border-border bg-muted/30 text-foreground hover:bg-muted"
@@ -255,35 +300,39 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               {showCustom && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <label className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
                       Premier jour
                     </label>
                     <input
                       type="date"
                       value={dateFrom}
-                      onChange={e => handleFromChange(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                      onChange={(e) => handleFromChange(e.target.value)}
+                      className="border-border bg-muted/30 focus:ring-primary/30 w-full rounded-xl border px-3 py-2.5 text-sm transition-all outline-none focus:ring-2"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <label className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
                       Dernier jour
                     </label>
                     <input
                       type="date"
                       value={dateTo}
                       min={dateFrom}
-                      onChange={e => setDateTo(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="border-border bg-muted/30 focus:ring-primary/30 w-full rounded-xl border px-3 py-2.5 text-sm transition-all outline-none focus:ring-2"
                     />
                   </div>
                 </div>
               )}
 
               {dateValid && (
-                <p className="text-[12px] italic text-muted-foreground">
+                <p className="text-muted-foreground text-[12px] italic">
                   Le planning couvrira{" "}
-                  {Math.round((new Date(dateTo + "T00:00:00").getTime() - new Date(dateFrom + "T00:00:00").getTime()) / 86400000) + 1}{" "}
+                  {Math.round(
+                    (new Date(dateTo + "T00:00:00").getTime() -
+                      new Date(dateFrom + "T00:00:00").getTime()) /
+                      86400000
+                  ) + 1}{" "}
                   jours, du {formatDate(dateFrom)} au {formatDate(dateTo)}.
                 </p>
               )}
@@ -301,23 +350,26 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 1 — ANALYSE  ═══════════════ */}
         {phase === "analyse" && (
           <>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div className="border-border flex items-center justify-between border-b px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <Sparkles className="h-4 w-4 text-primary" />
+                <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                  <Sparkles className="text-primary h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold leading-tight">Analyse en cours…</p>
-                  <p className="text-[11px] text-muted-foreground">{periodLabel}</p>
+                  <p className="text-sm leading-tight font-semibold">Analyse en cours…</p>
+                  <p className="text-muted-foreground text-[11px]">{periodLabel}</p>
                 </div>
               </div>
-              <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors">
-                <X className="h-4 w-4 text-muted-foreground" />
+              <button
+                onClick={onClose}
+                className="hover:bg-muted flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+              >
+                <X className="text-muted-foreground h-4 w-4" />
               </button>
             </div>
-            <div className="px-5 py-8 flex flex-col items-center gap-3">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Lecture de la configuration…</p>
+            <div className="flex flex-col items-center gap-3 px-5 py-8">
+              <Loader2 className="text-primary h-6 w-6 animate-spin" />
+              <p className="text-muted-foreground text-sm">Lecture de la configuration…</p>
             </div>
           </>
         )}
@@ -325,28 +377,30 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 2 — GÉNÉRATION  ════════════ */}
         {phase === "generation" && (
           <>
-            <div className="px-5 py-4 border-b border-border">
+            <div className="border-border border-b px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl">
+                  <Loader2 className="text-primary h-4 w-4 animate-spin" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold">Génération en cours…</p>
-                  <p className="text-[11px] text-muted-foreground">{progress}% · {periodLabel}</p>
+                  <p className="text-muted-foreground text-[11px]">
+                    {progress}% · {periodLabel}
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="h-0.5 bg-muted">
+            <div className="bg-muted h-0.5">
               <div
-                className="h-0.5 bg-primary transition-all duration-700 ease-out"
+                className="bg-primary h-0.5 transition-all duration-700 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-            <div className="px-5 py-7 space-y-5">
+            <div className="space-y-5 px-5 py-7">
               {STEPS.map((step, i) => {
-                const done   = i < loadingStep;
+                const done = i < loadingStep;
                 const active = i === loadingStep;
                 return (
                   <div
@@ -356,21 +410,30 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                       i > loadingStep ? "opacity-20" : "opacity-100"
                     )}
                   >
-                    <div className={cn(
-                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300",
-                      done ? "bg-emerald-100" : active ? "bg-primary/10" : "bg-muted"
-                    )}>
-                      {done
-                        ? <Check   className="h-3 w-3 text-emerald-600" />
-                        : active
-                          ? <Loader2 className="h-3 w-3 text-primary animate-spin" />
-                          : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-                      }
+                    <div
+                      className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all duration-300",
+                        done ? "bg-emerald-100" : active ? "bg-primary/10" : "bg-muted"
+                      )}
+                    >
+                      {done ? (
+                        <Check className="h-3 w-3 text-emerald-600" />
+                      ) : active ? (
+                        <Loader2 className="text-primary h-3 w-3 animate-spin" />
+                      ) : (
+                        <span className="bg-muted-foreground/30 h-1.5 w-1.5 rounded-full" />
+                      )}
                     </div>
-                    <span className={cn(
-                      "text-sm transition-colors duration-300",
-                      done ? "text-foreground font-medium" : active ? "text-foreground font-semibold" : "text-muted-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-sm transition-colors duration-300",
+                        done
+                          ? "text-foreground font-medium"
+                          : active
+                            ? "text-foreground font-semibold"
+                            : "text-muted-foreground"
+                      )}
+                    >
                       {step}
                     </span>
                   </div>
@@ -383,17 +446,17 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 3 — RÉVÉLATION  ════════════ */}
         {phase === "reveal" && (
           <>
-            <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="border-border flex shrink-0 items-center justify-between border-b px-5 py-4">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
                   <Check className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Planning généré !</p>
-                  <p className="text-[11px] text-muted-foreground">{periodLabel}</p>
+                  <p className="text-muted-foreground text-[11px]">{periodLabel}</p>
                 </div>
                 {genResult && (
-                  <div className="flex items-center gap-3 ml-2 text-[11px] text-muted-foreground shrink-0">
+                  <div className="text-muted-foreground ml-2 flex shrink-0 items-center gap-3 text-[11px]">
                     <span className="flex items-center gap-1">
                       <Users className="h-3 w-3" />
                       {genResult.stats.totalEmployes} employés
@@ -413,21 +476,24 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               </div>
               <button
                 onClick={onClose}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted transition-colors ml-2"
+                className="hover:bg-muted ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors"
               >
-                <X className="h-4 w-4 text-muted-foreground" />
+                <X className="text-muted-foreground h-4 w-4" />
               </button>
             </div>
 
             {genResult && genResult.warnings.length > 0 && (
               <div className="shrink-0 px-5 pt-3">
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <p className="text-[11px] font-medium text-amber-800 mb-1">
-                    {genResult.warnings.length} contrainte{genResult.warnings.length > 1 ? "s" : ""} non respectée{genResult.warnings.length > 1 ? "s" : ""}
+                  <p className="mb-1 text-[11px] font-medium text-amber-800">
+                    {genResult.warnings.length} contrainte{genResult.warnings.length > 1 ? "s" : ""}{" "}
+                    non respectée{genResult.warnings.length > 1 ? "s" : ""}
                   </p>
                   <ul className="space-y-0.5">
                     {genResult.warnings.slice(0, 3).map((w, i) => (
-                      <li key={i} className="text-[10px] text-amber-700">· {w}</li>
+                      <li key={i} className="text-[10px] text-amber-700">
+                        · {w}
+                      </li>
                     ))}
                     {genResult.warnings.length > 3 && (
                       <li className="text-[10px] text-amber-600 italic">
@@ -441,7 +507,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
 
             <div
               className={cn(
-                "flex-1 min-h-0 flex flex-col transition-opacity duration-500 mt-2",
+                "mt-2 flex min-h-0 flex-1 flex-col transition-opacity duration-500",
                 revealIn ? "opacity-100" : "opacity-0"
               )}
             >
@@ -454,9 +520,9 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
 
             <div
               className={cn(
-                "flex shrink-0 gap-2 px-5 py-4 border-t border-border",
+                "border-border flex shrink-0 gap-2 border-t px-5 py-4",
                 "transition-opacity duration-500",
-                revealIn ? "opacity-100" : "opacity-0 pointer-events-none"
+                revealIn ? "opacity-100" : "pointer-events-none opacity-0"
               )}
             >
               <Button variant="outline" className="flex-1" onClick={onClose}>
@@ -465,7 +531,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               <Link
                 href="/dashboard/plannings"
                 onClick={onClose}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-colors"
               >
                 <Check className="h-4 w-4" />
                 Voir le planning
@@ -473,7 +539,6 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
             </div>
           </>
         )}
-
       </div>
     </div>
   );

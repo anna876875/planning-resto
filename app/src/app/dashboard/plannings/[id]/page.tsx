@@ -41,7 +41,7 @@ export default function PlanningDetailPage() {
       </div>
 
       {/* Titre + actions */}
-      <div className="flex items-start justify-between border-b border-border px-6 py-5">
+      <div className="border-border flex items-start justify-between border-b px-6 py-5">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{planning.nom}</h1>
           <p className="text-muted-foreground text-sm">{planning.semaine}</p>

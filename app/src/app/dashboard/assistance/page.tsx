@@ -11,9 +11,10 @@ export default function AssistancePage() {
           <HelpCircle className="text-muted-foreground h-8 w-8" />
         </div>
         <div>
-          <p className="font-semibold">Centre d'assistance</p>
+          <p className="font-semibold">Centre d&apos;assistance</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Retrouvez ici la documentation, les tutoriels et le support pour utiliser Planning Resto.
+            Retrouvez ici la documentation, les tutoriels et le support pour utiliser Planning
+            Resto.
           </p>
         </div>
       </div>

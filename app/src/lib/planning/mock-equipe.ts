@@ -56,12 +56,8 @@ export const equipe: EmployeDetail[] = [
     joursTravail: ["Lun", "Mar", "Mer", "Jeu", "Ven"],
     services: ["matin", "soir"],
     note: "Weekends libres (ancienneté).",
-    alertes: [
-      { type: "heures_sup", label: "+7h heures sup", valeur: 7 },
-    ],
-    indisponibilites: [
-      { debut: "2026-08-20", motif: "Rendez-vous médical" },
-    ],
+    alertes: [{ type: "heures_sup", label: "+7h heures sup", valeur: 7 }],
+    indisponibilites: [{ debut: "2026-08-20", motif: "Rendez-vous médical" }],
   },
   {
     id: "2",
@@ -98,9 +94,7 @@ export const equipe: EmployeDetail[] = [
     dateDebut: "2023-01-10",
     joursTravail: ["Lun", "Mar", "Mer", "Sam", "Dim"],
     services: ["soir"],
-    alertes: [
-      { type: "weekends_consecutifs", label: "4 weekends consécutifs", valeur: 4 },
-    ],
+    alertes: [{ type: "weekends_consecutifs", label: "4 weekends consécutifs", valeur: 4 }],
     indisponibilites: [
       { debut: "2026-08-25", motif: "Mariage familial" },
       { debut: "2026-09-15", fin: "2026-09-16" },
@@ -135,9 +129,7 @@ export const equipe: EmployeDetail[] = [
     dateDebut: "2024-02-05",
     joursTravail: ["Ven", "Sam", "Dim"],
     services: ["soir", "coupure"],
-    indisposHebdo: [
-      { jours: ["Lun", "Mar", "Mer", "Jeu"], motif: "Indisponible en semaine" },
-    ],
+    indisposHebdo: [{ jours: ["Lun", "Mar", "Mer", "Jeu"], motif: "Indisponible en semaine" }],
     alertes: [
       { type: "weekends_consecutifs", label: "4 weekends consécutifs", valeur: 4 },
       { type: "heures_sup", label: "+4h heures sup", valeur: 4 },

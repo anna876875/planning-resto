@@ -13,7 +13,8 @@ export default function HistoriquePage() {
         <div>
           <p className="font-semibold">Historique des actions</p>
           <p className="text-muted-foreground mt-1 text-sm">
-            Cette section affichera l'historique des modifications de plannings, des changements d'équipe et des actions effectuées.
+            Cette section affichera l&apos;historique des modifications de plannings, des
+            changements d&apos;équipe et des actions effectuées.
           </p>
         </div>
       </div>
