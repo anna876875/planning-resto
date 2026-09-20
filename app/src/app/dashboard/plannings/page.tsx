@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sparkles, CalendarDays, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GeneratePlanningModal } from "@/components/planning/GeneratePlanningModal";
 import RevealGrid from "@/components/planning/RevealGrid";
 import { DailyView } from "@/components/planning/DailyView";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { cn } from "@/lib/utils";
 import { mockPlannings } from "@/lib/planning/mock-plannings";
 
@@ -13,11 +14,25 @@ type ViewMode = "semaine" | "jour";
 
 export default function PlanningsPage() {
   const [showGenModal, setShowGenModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [firstTime, setFirstTime] = useState(true);
   const [view, setView] = useState<ViewMode>("semaine");
+
+  useEffect(() => {
+    const alreadyDone = !!localStorage.getItem("onboarding_already_done");
+    setFirstTime(!alreadyDone);
+    if (!localStorage.getItem("onboarding_done")) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const activePlanning = mockPlannings.find((p) => p.statut === "actif");
 
   return (
+    <>
+    {showOnboarding && (
+      <OnboardingModal onDone={() => setShowOnboarding(false)} firstTime={firstTime} />
+    )}
     <div className="flex flex-col gap-4 px-4 py-4 md:px-6">
       {/* En-tête */}
       <div className="flex items-center justify-between">
@@ -84,5 +99,6 @@ export default function PlanningsPage() {
       {/* Modale génération */}
       {showGenModal && <GeneratePlanningModal onClose={() => setShowGenModal(false)} />}
     </div>
+    </>
   );
 }

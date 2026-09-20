@@ -238,6 +238,19 @@ export default function AuthPage() {
               Continuer en mode démo →
             </a>
           </div>
+
+          {/* Accès direct — dev uniquement */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="border-border border-t pt-3 text-center">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/plannings")}
+                className="bg-muted hover:bg-muted/70 text-muted-foreground w-full rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+              >
+                ⚡ Accès direct sans connexion (dev)
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

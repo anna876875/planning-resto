@@ -11,11 +11,17 @@ const NAV_ITEMS = [
   { href: "/dashboard/parametres", label: "Paramètres", icon: Settings, exact: false },
 ];
 
-export function BottomNav() {
+export function BottomNav({ variant = "fixed" }: { variant?: "fixed" | "preview" }) {
   const pathname = usePathname();
 
   return (
-    <nav className="border-border bg-background fixed right-0 bottom-0 left-0 z-50 border-t md:hidden">
+    <nav
+      className={
+        variant === "fixed"
+          ? "border-border bg-background fixed right-0 bottom-0 left-0 z-50 border-t md:hidden"
+          : "border-border bg-background w-full border-t"
+      }
+    >
       <div className="safe-pb flex h-16 items-center justify-around">
         {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
 import type { Shift } from "@/types/planning";
@@ -127,9 +127,8 @@ export default function RevealGrid({
         {/* ── Lignes services ── */}
         <tbody>
           {SERVICES.map((svc, svcIdx) => (
-            <>
+            <Fragment key={svc.key}>
               <tr
-                key={svc.key}
                 className={cn(svcIdx < SERVICES.length - 1 && "border-border/50 border-b")}
               >
                 {/* Colonne gauche — heure d'embauche */}
@@ -216,7 +215,7 @@ export default function RevealGrid({
                   ))}
                 </tr>
               )}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

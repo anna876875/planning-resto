@@ -1,12 +1,15 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
-import { BottomNav } from "@/components/dashboard/BottomNav";
+import { Header } from "@/components/dashboard/Header";
+import { DevMobilePreview } from "@/components/dashboard/DevMobilePreview";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <main className="flex flex-1 flex-col overflow-y-auto pb-16 md:pb-0">{children}</main>
-      <BottomNav />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header />
+        <DevMobilePreview>{children}</DevMobilePreview>
+      </div>
     </div>
   );
 }

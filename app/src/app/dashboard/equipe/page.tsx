@@ -35,6 +35,7 @@ import {
   type IndispoHebdo,
   type Indisponibilite,
 } from "@/lib/planning/mock-equipe";
+import { loadConfig, DEFAULT_CONFIG, type PlanningConfig } from "@/lib/planning/config";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1651,11 +1652,23 @@ export default function EquipePage() {
   const [team, setTeam] = useState<EmployeDetail[]>(equipe);
   const [search, setSearch] = useState("");
   const [metier, setMetier] = useState("Tous");
-  const [vue, setVue] = useState<"cartes" | "liste">("cartes");
+  const [vue, setVueState] = useState<"cartes" | "liste">("cartes");
+  const [cfg, setCfg] = useState<PlanningConfig>(DEFAULT_CONFIG);
   const [selected, setSelected] = useState<EmployeDetail | null>(null);
   const [equipesOpen, setEquipesOpen] = useState(false);
   const [ajouterOpen, setAjouterOpen] = useState(false);
   const [groupes, setGroupes] = useState<EquipeGroupe[]>(INITIAL_GROUPES);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("equipe_vue");
+    if (saved === "cartes" || saved === "liste") setVueState(saved);
+    setCfg(loadConfig());
+  }, []);
+
+  function setVue(v: "cartes" | "liste") {
+    setVueState(v);
+    localStorage.setItem("equipe_vue", v);
+  }
 
   const METIERS = ["Tous", ...Array.from(new Set(team.map((e) => secteur(e.poste)))).sort()];
 
@@ -1897,6 +1910,16 @@ export default function EquipePage() {
                     <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
                       Contrat
                     </th>
+                    {cfg.services.matin.actif && (
+                      <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
+                        Matin
+                      </th>
+                    )}
+                    {cfg.services.soir.actif && (
+                      <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
+                        Soir
+                      </th>
+                    )}
                     <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
                       H/sem.
                     </th>
@@ -1952,6 +1975,28 @@ export default function EquipePage() {
                             {cc.label}
                           </span>
                         </td>
+                        {cfg.services.matin.actif && (
+                          <td className="px-3 py-2.5">
+                            {emp.services.includes("matin") ? (
+                              <span className="text-xs font-medium text-blue-700">
+                                {cfg.services.matin.debut}–{cfg.services.matin.fin}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/30 text-xs">—</span>
+                            )}
+                          </td>
+                        )}
+                        {cfg.services.soir.actif && (
+                          <td className="px-3 py-2.5">
+                            {emp.services.includes("soir") ? (
+                              <span className="text-xs font-medium text-violet-700">
+                                {cfg.services.soir.debut}–{cfg.services.soir.fin}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/30 text-xs">—</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-3 py-2.5 font-medium">{emp.heuresHebdo} h</td>
                         <td className="px-3 py-2.5">
                           <span
