@@ -42,21 +42,24 @@ const CONTRAT_CFG: Record<ContratType, { label: string; color: string }> = {
   extra: { label: "Extra", color: "text-amber-700   bg-amber-50   border-amber-200" },
 };
 
-const STATUT_CFG: Record<StatutEmploye, { label: string; dot: string; badge: string }> = {
+const STATUT_CFG: Record<StatutEmploye, { label: string; dot: string; badge: string; avatar: string }> = {
   actif: {
     label: "Actif",
     dot: "bg-emerald-500",
     badge: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    avatar: "bg-emerald-100 text-emerald-700",
   },
   congé: {
     label: "En congé",
     dot: "bg-amber-400",
-    badge: "text-amber-700   bg-amber-50   border-amber-200",
+    badge: "text-amber-700 bg-amber-50 border-amber-200",
+    avatar: "bg-amber-100 text-amber-700",
   },
   arrêt_maladie: {
-    label: "Arrêt maladie",
+    label: "Arrêt",
     dot: "bg-red-400",
-    badge: "text-red-700     bg-red-50     border-red-200",
+    badge: "text-red-700 bg-red-50 border-red-200",
+    avatar: "bg-red-100 text-red-600",
   },
 };
 
@@ -1895,18 +1898,46 @@ export default function EquipePage() {
             <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
           </div>
         ) : liste.length === 0 ? (
-          <p className="text-muted-foreground py-12 text-center text-sm">
-            {team.length === 0 ? "Aucun employé. Ajoutez votre premier employé." : "Aucun résultat."}
-          </p>
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="bg-muted flex h-16 w-16 items-center justify-center rounded-full">
+              <UsersRound className="text-muted-foreground h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                {team.length === 0 ? "Aucun employé" : "Aucun résultat"}
+              </p>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                {team.length === 0
+                  ? "Ajoutez votre premier employé pour commencer."
+                  : "Essayez un autre filtre ou une autre recherche."}
+              </p>
+            </div>
+            {team.length === 0 && (
+              <button
+                type="button"
+                onClick={() => setAjouterOpen(true)}
+                className="bg-primary text-primary-foreground mt-1 flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium"
+              >
+                <Plus className="h-3.5 w-3.5" /> Ajouter un employé
+              </button>
+            )}
+          </div>
         ) : (
-          <div className="pb-20">
+          <div className="space-y-5 px-4 pb-24 pt-2">
             {sectorKeys.map((sector) => (
               <div key={sector}>
-                <p className="text-muted-foreground px-4 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase">
-                  {sector}
-                  <span className="ml-2 font-normal opacity-50">{bySector[sector].length}</span>
-                </p>
-                <div className="border-border divide-border border-y divide-y">
+                {/* Label secteur */}
+                <div className="mb-2 flex items-center gap-2">
+                  <p className="text-muted-foreground text-[11px] font-semibold tracking-widest uppercase">
+                    {sector}
+                  </p>
+                  <span className="text-muted-foreground/50 text-[11px]">
+                    {bySector[sector].length}
+                  </span>
+                </div>
+
+                {/* Carte groupe */}
+                <div className="border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y shadow-sm">
                   {bySector[sector].map((emp) => {
                     const sc = STATUT_CFG[emp.statut];
                     const cc = CONTRAT_CFG[emp.contrat];
@@ -1916,27 +1947,19 @@ export default function EquipePage() {
                         key={emp.id}
                         type="button"
                         onClick={() => setSelected(emp)}
-                        className="hover:bg-muted/40 active:bg-muted flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors"
+                        className="hover:bg-muted/30 active:bg-muted/50 flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors"
                       >
-                        {/* Avatar + statut dot */}
-                        <div className="relative shrink-0">
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold",
-                              AVATAR_CLS
-                            )}
-                          >
-                            {emp.nom.charAt(0)}
-                          </div>
-                          <span
-                            className={cn(
-                              "border-background absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2",
-                              sc.dot
-                            )}
-                          />
+                        {/* Avatar coloré par statut */}
+                        <div
+                          className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                            sc.avatar
+                          )}
+                        >
+                          {emp.nom.charAt(0)}
                         </div>
 
-                        {/* Nom + poste */}
+                        {/* Nom + infos */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-semibold">{emp.nom}</p>
@@ -1946,21 +1969,18 @@ export default function EquipePage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-muted-foreground text-xs">{emp.poste}</p>
+                          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                            {emp.poste}
+                            {" · "}
+                            <span className={cn("font-medium", sc.dot === "bg-emerald-500" ? "text-emerald-600" : sc.dot === "bg-amber-400" ? "text-amber-600" : "text-red-500")}>
+                              {sc.label}
+                            </span>
+                            {" · "}{cc.label}
+                          </p>
                         </div>
 
-                        {/* Contrat + chevron */}
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded border px-1.5 py-0.5 text-[10px] font-semibold",
-                              cc.color
-                            )}
-                          >
-                            {cc.label}
-                          </span>
-                          <ChevronRight className="text-muted-foreground h-4 w-4" />
-                        </div>
+                        {/* Chevron */}
+                        <ChevronRight className="text-muted-foreground/40 h-4 w-4 shrink-0" />
                       </button>
                     );
                   })}
