@@ -21,8 +21,8 @@ const ROLE_GROUPE: Record<string, { label: string; order: number }> = {
 };
 
 const SERVICE_CONFIG = {
-  matin: { label: "Midi", icon: "☀️", color: "text-amber-600", bg: "bg-amber-50" },
-  soir: { label: "Soir", icon: "🌙", color: "text-indigo-600", bg: "bg-indigo-50" },
+  matin: { label: "Midi", icon: "☀️", color: "text-amber-600", bg: "bg-amber-50", debut: "09:00", fin: "15:00" },
+  soir:  { label: "Soir", icon: "🌙", color: "text-indigo-600", bg: "bg-indigo-50", debut: "18:30", fin: "23:00" },
 } as const;
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -222,7 +222,12 @@ export default function PlanningDetailPage() {
                 <div className={cn("flex items-center justify-between px-4 py-3", cfg.bg)}>
                   <div className="flex items-center gap-2">
                     <span className="text-base">{cfg.icon}</span>
-                    <span className={cn("text-sm font-semibold", cfg.color)}>{cfg.label}</span>
+                    <div>
+                      <p className={cn("text-sm font-semibold leading-tight", cfg.color)}>{cfg.label}</p>
+                      <p className={cn("text-[11px] font-medium opacity-70", cfg.color)}>
+                        {cfg.debut} – {cfg.fin}
+                      </p>
+                    </div>
                   </div>
                   <span className={cn("text-xs font-medium", cfg.color)}>
                     {total} présent{total > 1 ? "s" : ""}
