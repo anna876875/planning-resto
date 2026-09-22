@@ -23,7 +23,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  equipe,
   type ContratType,
   type StatutEmploye,
   type EmployeDetail,
@@ -806,12 +805,24 @@ const POSTES_SUGGESTIONS = [
 
 const JOURS_OPTIONS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
-type IndispoFormEntry = { jours: string[]; heureDebut: string; heureFin: string; motif: string };
-const EMPTY_INDISPO_FORM: IndispoFormEntry = { jours: [], heureDebut: "", heureFin: "", motif: "" };
+type IndispoFormEntry = {
+  jours: string[];
+  touteJournee: boolean;
+  heureDebut: string;
+  heureFin: string;
+  motif: string;
+};
+const EMPTY_INDISPO_FORM: IndispoFormEntry = {
+  jours: [],
+  touteJournee: true,
+  heureDebut: "",
+  heureFin: "",
+  motif: "",
+};
 
 type EmpForm = {
   nom: string;
-  poste: string;
+  postes: string[];
   email: string;
   telephone: string;
   contrat: ContratType;
@@ -824,7 +835,7 @@ type EmpForm = {
 
 const EMPTY_EMP: EmpForm = {
   nom: "",
-  poste: "",
+  postes: [],
   email: "",
   telephone: "",
   contrat: "CDI",
@@ -887,7 +898,7 @@ function AjouterEmployeModal({
       setForm((f) => ({
         ...f,
         nom: data.nom ?? f.nom,
-        poste: data.poste ?? f.poste,
+        postes: data.poste ? [data.poste as string] : f.postes,
         email: data.email ?? f.email,
         telephone: data.telephone ?? f.telephone,
         contrat: data.contrat ?? f.contrat,
@@ -909,7 +920,7 @@ function AjouterEmployeModal({
   }
 
   function canSubmit() {
-    return form.nom.trim().length > 0 && form.poste.trim().length > 0;
+    return form.nom.trim().length > 0 && form.postes.length > 0;
   }
 
   function submit() {
@@ -917,7 +928,7 @@ function AjouterEmployeModal({
     onAdd({
       id: crypto.randomUUID(),
       nom: form.nom.trim(),
-      poste: form.poste.trim(),
+      poste: form.postes.join(", "),
       email: form.email.trim(),
       telephone: form.telephone.trim(),
       contrat: form.contrat,
@@ -1104,19 +1115,43 @@ function AjouterEmployeModal({
                     placeholder="Prénom Nom"
                   />
                 </Field>
-                <Field label="Poste *">
-                  <input
-                    list="postes-list"
-                    value={form.poste}
-                    onChange={(e) => set("poste", e.target.value)}
-                    placeholder="Ex : Chef de partie"
-                    className="border-border bg-muted/30 focus:ring-primary/30 w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-                  />
-                  <datalist id="postes-list">
-                    {POSTES_SUGGESTIONS.map((p) => (
-                      <option key={p} value={p} />
-                    ))}
-                  </datalist>
+                <Field label="Poste(s) *">
+                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                    {POSTES_SUGGESTIONS.map((p) => {
+                      const checked = form.postes.includes(p);
+                      return (
+                        <label
+                          key={p}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-xs font-medium transition-colors select-none",
+                            checked
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/40"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-primary"
+                            checked={checked}
+                            onChange={() =>
+                              set(
+                                "postes",
+                                checked
+                                  ? form.postes.filter((x) => x !== p)
+                                  : [...form.postes, p]
+                              )
+                            }
+                          />
+                          {p}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {form.postes.length === 0 && (
+                    <p className="text-muted-foreground mt-1 text-[11px]">
+                      Sélectionnez au moins un poste.
+                    </p>
+                  )}
                 </Field>
               </div>
 
@@ -1230,7 +1265,11 @@ function AjouterEmployeModal({
                     <div className="flex-1">
                       <p className="text-xs font-semibold">
                         {ind.jours.join(", ")}
-                        {ind.heureDebut && ind.heureFin && ` · ${ind.heureDebut} – ${ind.heureFin}`}
+                        {ind.touteJournee
+                          ? " · Journée entière"
+                          : ind.heureDebut && ind.heureFin
+                            ? ` · ${ind.heureDebut} – ${ind.heureFin}`
+                            : ""}
                       </p>
                       {ind.motif && (
                         <p className="text-muted-foreground text-[11px]">{ind.motif}</p>
@@ -1272,22 +1311,45 @@ function AjouterEmployeModal({
                         ))}
                       </div>
                     </Field>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Field label="De (optionnel)">
-                        <Input
-                          type="time"
-                          value={newIndispo.heureDebut}
-                          onChange={(v) => setNewIndispo((n) => ({ ...n, heureDebut: v }))}
-                        />
-                      </Field>
-                      <Field label="À (optionnel)">
-                        <Input
-                          type="time"
-                          value={newIndispo.heureFin}
-                          onChange={(v) => setNewIndispo((n) => ({ ...n, heureFin: v }))}
-                        />
-                      </Field>
+
+                    {/* Toggle journée entière / horaires */}
+                    <div className="flex gap-2">
+                      {[true, false].map((val) => (
+                        <button
+                          key={String(val)}
+                          type="button"
+                          onClick={() => setNewIndispo((n) => ({ ...n, touteJournee: val }))}
+                          className={cn(
+                            "flex-1 rounded-md border py-1.5 text-xs font-medium transition-colors",
+                            newIndispo.touteJournee === val
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:border-primary/40"
+                          )}
+                        >
+                          {val ? "Journée entière" : "Horaires précis"}
+                        </button>
+                      ))}
                     </div>
+
+                    {!newIndispo.touteJournee && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Field label="De">
+                          <Input
+                            type="time"
+                            value={newIndispo.heureDebut}
+                            onChange={(v) => setNewIndispo((n) => ({ ...n, heureDebut: v }))}
+                          />
+                        </Field>
+                        <Field label="À">
+                          <Input
+                            type="time"
+                            value={newIndispo.heureFin}
+                            onChange={(v) => setNewIndispo((n) => ({ ...n, heureFin: v }))}
+                          />
+                        </Field>
+                      </div>
+                    )}
+
                     <Field label="Motif (optionnel)">
                       <Input
                         value={newIndispo.motif}
@@ -1640,11 +1702,35 @@ const SECTEUR: Record<string, string> = {
   Plongeur: "Plonge",
   Plongeuse: "Plonge",
 };
-const secteur = (p: string) => SECTEUR[p] ?? p;
+const secteur = (p: string) => {
+  const first = p.split(",")[0].trim();
+  return SECTEUR[first] ?? first;
+};
 
+// Convertit une ligne Supabase (snake_case) en EmployeDetail (camelCase)
+function dbToEmploye(row: Record<string, unknown>): EmployeDetail {
+  return {
+    id: row.id as string,
+    nom: row.nom as string,
+    poste: (row.poste as string) ?? "",
+    email: (row.email as string) ?? "",
+    telephone: (row.telephone as string) ?? "",
+    statut: ((row.statut as string) ?? "actif") as StatutEmploye,
+    contrat: ((row.contrat as string) ?? "CDI") as ContratType,
+    heuresHebdo: (row.heures_hebdo as number) ?? 35,
+    dateDebut: (row.date_debut as string) ?? "",
+    dateFinCDD: (row.date_fin_cdd as string) ?? undefined,
+    note: (row.note as string) ?? undefined,
+    joursTravail: [],
+    services: [],
+    alertes: [],
+    indisponibilites: [],
+  };
+}
 
 export default function EquipePage() {
-  const [team, setTeam] = useState<EmployeDetail[]>(equipe);
+  const [team, setTeam] = useState<EmployeDetail[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [metier, setMetier] = useState("Tous");
   const [selected, setSelected] = useState<EmployeDetail | null>(null);
@@ -1652,13 +1738,50 @@ export default function EquipePage() {
   const [ajouterOpen, setAjouterOpen] = useState(false);
   const [groupes, setGroupes] = useState<EquipeGroupe[]>(INITIAL_GROUPES);
 
-  function handleAddEmploye(emp: EmployeDetail) {
-    setTeam((prev) => [...prev, emp]);
+  useEffect(() => {
+    void fetch("/api/employes")
+      .then((r) => r.json())
+      .then((rows: unknown[]) => setTeam(rows.map((r) => dbToEmploye(r as Record<string, unknown>))))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleAddEmploye(emp: EmployeDetail) {
+    const res = await fetch("/api/employes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nom: emp.nom,
+        poste: emp.poste,
+        email: emp.email,
+        telephone: emp.telephone,
+        contrat: emp.contrat,
+        heures_hebdo: emp.heuresHebdo,
+        date_debut: emp.dateDebut,
+        date_fin_cdd: emp.dateFinCDD ?? null,
+        note: emp.note ?? null,
+        statut: emp.statut,
+      }),
+    });
+    if (res.ok) {
+      const row = (await res.json()) as Record<string, unknown>;
+      setTeam((prev) => [...prev, dbToEmploye(row)]);
+    }
   }
 
-  function handleSave(id: string, patch: Draft) {
+  async function handleSave(id: string, patch: Draft) {
+    // Met à jour l'état local immédiatement pour une réponse rapide
     setTeam((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     setSelected((prev) => (prev?.id === id ? { ...prev, ...patch } : prev));
+    // Synchronise avec Supabase (uniquement les champs présents en base)
+    await fetch(`/api/employes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: patch.email,
+        telephone: patch.telephone,
+        contrat: patch.contrat,
+      }),
+    });
   }
 
   const METIERS = ["Tous", ...Array.from(new Set(team.map((e) => secteur(e.poste)))).sort()];
@@ -1767,8 +1890,14 @@ export default function EquipePage() {
         </div>
 
         {/* Liste groupée par secteur */}
-        {liste.length === 0 ? (
-          <p className="text-muted-foreground py-12 text-center text-sm">Aucun résultat.</p>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          </div>
+        ) : liste.length === 0 ? (
+          <p className="text-muted-foreground py-12 text-center text-sm">
+            {team.length === 0 ? "Aucun employé. Ajoutez votre premier employé." : "Aucun résultat."}
+          </p>
         ) : (
           <div className="pb-20">
             {sectorKeys.map((sector) => (
