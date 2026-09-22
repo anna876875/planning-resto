@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import {
   loadConfig,
   saveConfig,
+  loadConfigFromServer,
+  saveConfigToServer,
   DEFAULT_CONFIG,
   type PlanningConfig,
   type ServiceConfig,
@@ -208,13 +210,19 @@ export default function ParametresPage() {
   const ref = useRef<PlanningConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
-    const c = loadConfig();
-    ref.current = c;
-    setCfg(c);
+    // Essaie d'abord le serveur (Supabase), sinon localStorage
+    void loadConfigFromServer().then((serverCfg) => {
+      const c = serverCfg ?? loadConfig();
+      ref.current = c;
+      setCfg(c);
+      // Synchronise localStorage avec la version serveur
+      if (serverCfg) saveConfig(serverCfg);
+    });
   }, []);
 
   function persist(next: PlanningConfig) {
     saveConfig(next);
+    void saveConfigToServer(next);
     setSaved(true);
     setTimeout(() => setSaved(false), 1100);
   }

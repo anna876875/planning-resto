@@ -129,3 +129,53 @@ export function loadConfig(): PlanningConfig {
 export function saveConfig(cfg: PlanningConfig): void {
   localStorage.setItem(KEY, JSON.stringify(cfg));
 }
+
+// ─── Supabase sync ────────────────────────────────────────────────────────────
+
+export async function loadConfigFromServer(): Promise<PlanningConfig | null> {
+  try {
+    const res = await fetch("/api/restaurant");
+    if (!res.ok) return null;
+    const data = (await res.json()) as { config?: PlanningConfig };
+    if (!data?.config) return null;
+    // Même merge défensif que loadConfig() pour gérer les configs partielles
+    const saved = data.config as unknown as Record<string, unknown>;
+    const savedSvcs = (saved.services ?? {}) as Record<string, unknown>;
+    return {
+      ...DEFAULT_CONFIG,
+      ...saved,
+      services: {
+        matin: {
+          ...DEFAULT_CONFIG.services.matin,
+          ...((savedSvcs.matin as Partial<ServiceConfig>) ?? {}),
+        },
+        soir: {
+          ...DEFAULT_CONFIG.services.soir,
+          ...((savedSvcs.soir as Partial<ServiceConfig>) ?? {}),
+        },
+      },
+      coupure: {
+        ...DEFAULT_CONFIG.coupure,
+        ...((saved.coupure as Partial<PlanningConfig["coupure"]>) ?? {}),
+      },
+      disponibilites: {
+        ...DEFAULT_CONFIG.disponibilites,
+        ...((saved.disponibilites as PlanningConfig["disponibilites"]) ?? {}),
+      },
+    } as PlanningConfig;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveConfigToServer(cfg: PlanningConfig): Promise<void> {
+  try {
+    await fetch("/api/restaurant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: cfg }),
+    });
+  } catch {
+    // Silencieux — localStorage reste la source de vérité locale
+  }
+}

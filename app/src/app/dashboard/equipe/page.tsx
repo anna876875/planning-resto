@@ -4,13 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   Search,
   Plus,
-  Users,
-  LayoutGrid,
-  List,
-  Clock,
   Mail,
   Phone,
-  CalendarOff,
   Repeat2,
   X,
   CalendarDays,
@@ -23,9 +18,9 @@ import {
   Loader2,
   CheckCircle2,
   MoreHorizontal,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   equipe,
@@ -35,7 +30,6 @@ import {
   type IndispoHebdo,
   type Indisponibilite,
 } from "@/lib/planning/mock-equipe";
-import { loadConfig, DEFAULT_CONFIG, type PlanningConfig } from "@/lib/planning/config";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1648,29 +1642,15 @@ const SECTEUR: Record<string, string> = {
 };
 const secteur = (p: string) => SECTEUR[p] ?? p;
 
+
 export default function EquipePage() {
   const [team, setTeam] = useState<EmployeDetail[]>(equipe);
   const [search, setSearch] = useState("");
   const [metier, setMetier] = useState("Tous");
-  const [vue, setVueState] = useState<"cartes" | "liste">("cartes");
-  const [cfg, setCfg] = useState<PlanningConfig>(DEFAULT_CONFIG);
   const [selected, setSelected] = useState<EmployeDetail | null>(null);
   const [equipesOpen, setEquipesOpen] = useState(false);
   const [ajouterOpen, setAjouterOpen] = useState(false);
   const [groupes, setGroupes] = useState<EquipeGroupe[]>(INITIAL_GROUPES);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("equipe_vue");
-    if (saved === "cartes" || saved === "liste") setVueState(saved);
-    setCfg(loadConfig());
-  }, []);
-
-  function setVue(v: "cartes" | "liste") {
-    setVueState(v);
-    localStorage.setItem("equipe_vue", v);
-  }
-
-  const METIERS = ["Tous", ...Array.from(new Set(team.map((e) => secteur(e.poste)))).sort()];
 
   function handleAddEmploye(emp: EmployeDetail) {
     setTeam((prev) => [...prev, emp]);
@@ -1681,6 +1661,8 @@ export default function EquipePage() {
     setSelected((prev) => (prev?.id === id ? { ...prev, ...patch } : prev));
   }
 
+  const METIERS = ["Tous", ...Array.from(new Set(team.map((e) => secteur(e.poste)))).sort()];
+
   const liste = team.filter((e) => {
     const q = search.toLowerCase();
     const matchSearch = !q || e.nom.toLowerCase().includes(q) || e.poste.toLowerCase().includes(q);
@@ -1688,90 +1670,74 @@ export default function EquipePage() {
     return matchSearch && matchMetier;
   });
 
-  const moyWkRepos =
-    team.length > 0
-      ? (team.reduce((s, e) => s + weekendsReposCeMois(e.joursTravail), 0) / team.length).toFixed(1)
-      : "0";
-  const moyReposConsec =
-    team.length > 0
-      ? (team.reduce((s, e) => s + maxReposConsecutifs(e.joursTravail), 0) / team.length).toFixed(1)
-      : "0";
+  // Groupement par secteur avec ordre fixe
+  const SECTOR_ORDER = ["Cuisine", "Service", "Bar", "Plonge"];
+  const bySector: Record<string, EmployeDetail[]> = {};
+  for (const emp of liste) {
+    const s = secteur(emp.poste);
+    if (!bySector[s]) bySector[s] = [];
+    bySector[s].push(emp);
+  }
+  const sectorKeys = [
+    ...SECTOR_ORDER.filter((s) => bySector[s]),
+    ...Object.keys(bySector).filter((s) => !SECTOR_ORDER.includes(s)),
+  ];
+
+  const nbAlertes = team.filter((e) => (e.alertes?.length ?? 0) > 0).length;
 
   return (
     <>
       <div className="flex flex-col">
-        {/* Header */}
-        <div className="space-y-4 p-4 md:p-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight">Équipe</h1>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5"
+        {/* Header + filtres sticky */}
+        <div className="border-border bg-background sticky top-0 z-20 border-b">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div>
+              <h1 className="text-lg font-bold">Équipe</h1>
+              <p className="text-muted-foreground text-xs">
+                {team.length} employé{team.length > 1 ? "s" : ""}
+                {nbAlertes > 0 && (
+                  <> · <span className="text-amber-600 font-medium">{nbAlertes} alerte{nbAlertes > 1 ? "s" : ""}</span></>
+                )}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
                 onClick={() => setEquipesOpen(true)}
+                className="border-border text-muted-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-lg border transition-colors"
+                title="Définir des équipes"
               >
-                <UsersRound className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Définir des équipes</span>
-              </Button>
-              <Button size="sm" className="h-8 gap-1.5" onClick={() => setAjouterOpen(true)}>
+                <UsersRound className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setAjouterOpen(true)}
+                className="bg-primary text-primary-foreground flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-medium"
+              >
                 <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ajouter un employé</span>
-              </Button>
+                Ajouter
+              </button>
             </div>
           </div>
 
-          {/* KPIs */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              { icon: Users, label: "Employés", value: team.length, sub: "dans l'équipe" },
-              { icon: UsersRound, label: "Équipes", value: groupes.length || "—", sub: "définies" },
-              {
-                icon: CalendarOff,
-                label: "Weekends repos",
-                value: `${moyWkRepos}/mois`,
-                sub: "moy. par employé",
-              },
-              {
-                icon: Clock,
-                label: "Repos consécutifs",
-                value: `${moyReposConsec}j`,
-                sub: "moy. max par semaine",
-              },
-            ].map(({ icon: Icon, label, value, sub }) => (
-              <Card key={label}>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                    <Icon className="text-primary h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs">{label}</p>
-                    <p className="text-xl font-bold">{value}</p>
-                    <p className="text-muted-foreground text-[10px]">{sub}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Tab bar métiers */}
-          <div className="-mx-4 overflow-x-auto md:-mx-6">
-            <div className="border-border flex border-b px-4 md:px-6">
+          {/* Filtres métier */}
+          <div className="overflow-x-auto px-4 pb-3 scrollbar-none">
+            <div className="flex gap-1.5">
               {METIERS.map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMetier(m)}
                   className={cn(
-                    "shrink-0 border-b-2 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition-colors",
+                    "shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors",
                     metier === m
-                      ? "border-primary text-foreground"
-                      : "text-muted-foreground hover:text-foreground border-transparent"
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:border-primary/50"
                   )}
                 >
                   {m}
                   {m !== "Tous" && (
-                    <span className="ml-1.5 text-[10px] opacity-50">
+                    <span className="ml-1 opacity-60">
                       {team.filter((e) => secteur(e.poste) === m).length}
                     </span>
                   )}
@@ -1779,193 +1745,83 @@ export default function EquipePage() {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Recherche + toggle */}
-          <div className="flex gap-2">
-            <div className="border-border bg-muted/30 flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
-              <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-              <input
-                type="text"
-                placeholder="Rechercher…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="placeholder:text-muted-foreground/50 w-full bg-transparent text-sm outline-none"
-              />
-            </div>
-            <div className="border-border flex shrink-0 items-center gap-0.5 rounded-lg border p-1">
-              {(["cartes", "liste"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setVue(v)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                    vue === v
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {v === "cartes" ? (
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                  ) : (
-                    <List className="h-3.5 w-3.5" />
-                  )}
-                  {v === "cartes" ? "Vue cartes" : "Vue liste"}
-                </button>
-              ))}
-            </div>
+        {/* Barre de recherche */}
+        <div className="px-4 py-3">
+          <div className="border-border bg-muted/30 flex items-center gap-2 rounded-xl border px-3 py-2.5">
+            <Search className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+            <input
+              type="text"
+              placeholder="Rechercher un employé…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="placeholder:text-muted-foreground/50 w-full bg-transparent text-sm outline-none"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")} className="text-muted-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
+        </div>
 
-          {liste.length === 0 && (
-            <p className="text-muted-foreground py-12 text-center text-sm">Aucun résultat.</p>
-          )}
-
-          {/* ── Vue cartes ───────────────────────────────────────────────────── */}
-          {vue === "cartes" && (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {liste.map((emp) => {
-                const sc = STATUT_CFG[emp.statut];
-                const cc = CONTRAT_CFG[emp.contrat];
-                const nbIndispo = emp.indisponibilites?.length ?? 0;
-                const hasAlerte = (emp.alertes?.length ?? 0) > 0;
-                return (
-                  <Card
-                    key={emp.id}
-                    onClick={() => setSelected(emp)}
-                    className="hover:border-primary relative flex h-full cursor-pointer flex-col rounded-md transition-all hover:shadow-sm"
-                  >
-                    <MoreHorizontal className="text-muted-foreground/35 absolute top-2.5 right-2.5 h-3.5 w-3.5" />
-                    <CardContent className="flex flex-1 flex-col p-3">
-                      <div className="flex items-center gap-3 pr-4">
-                        <div
-                          className={cn(
-                            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-                            AVATAR_CLS
-                          )}
-                        >
-                          {emp.nom.charAt(0)}
+        {/* Liste groupée par secteur */}
+        {liste.length === 0 ? (
+          <p className="text-muted-foreground py-12 text-center text-sm">Aucun résultat.</p>
+        ) : (
+          <div className="pb-20">
+            {sectorKeys.map((sector) => (
+              <div key={sector}>
+                <p className="text-muted-foreground px-4 pt-4 pb-2 text-[11px] font-semibold tracking-widest uppercase">
+                  {sector}
+                  <span className="ml-2 font-normal opacity-50">{bySector[sector].length}</span>
+                </p>
+                <div className="border-border divide-border border-y divide-y">
+                  {bySector[sector].map((emp) => {
+                    const sc = STATUT_CFG[emp.statut];
+                    const cc = CONTRAT_CFG[emp.contrat];
+                    const nbAlert = emp.alertes?.length ?? 0;
+                    return (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => setSelected(emp)}
+                        className="hover:bg-muted/40 active:bg-muted flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors"
+                      >
+                        {/* Avatar + statut dot */}
+                        <div className="relative shrink-0">
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold",
+                              AVATAR_CLS
+                            )}
+                          >
+                            {emp.nom.charAt(0)}
+                          </div>
                           <span
                             className={cn(
-                              "border-background absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2",
+                              "border-background absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2",
                               sc.dot
                             )}
                           />
                         </div>
+
+                        {/* Nom + poste */}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline gap-2">
+                          <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-semibold">{emp.nom}</p>
-                            <p className="text-muted-foreground shrink-0 text-xs">{emp.poste}</p>
-                          </div>
-                          <p className="text-muted-foreground text-xs">
-                            <span
-                              className={cn(
-                                "rounded border px-1.5 py-0.5 text-[10px] font-semibold",
-                                cc.color
-                              )}
-                            >
-                              {cc.label}
-                            </span>
-                            <span className="ml-2">{emp.heuresHebdo} h/sem.</span>
-                            {nbIndispo > 0 && (
-                              <span className="ml-2 opacity-60">· {nbIndispo} indispo.</span>
-                            )}
-                            {emp.statut !== "actif" && (
-                              <span
-                                className={cn(
-                                  "ml-2 font-medium",
-                                  emp.statut === "congé" ? "text-amber-600" : "text-red-600"
-                                )}
-                              >
-                                · {emp.statut === "congé" ? "En congé" : "Arrêt maladie"}
+                            {nbAlert > 0 && (
+                              <span className="flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-amber-100 px-1 text-[9px] font-bold text-amber-700">
+                                {nbAlert}
                               </span>
                             )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex-1" />
-                      {hasAlerte && (
-                        <div className="mt-3 flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-1.5">
-                          <span className="shrink-0 text-xs text-blue-400">●</span>
-                          <p className="text-xs text-blue-600">
-                            {emp.alertes!.map((a) => a.label).join("  ·  ")}
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ── Vue liste (tableau) ───────────────────────────────────────────── */}
-          {vue === "liste" && liste.length > 0 && (
-            <div className="border-border overflow-hidden rounded-md border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-border bg-muted/30 border-b">
-                    <th className="text-muted-foreground px-4 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                      Employé
-                    </th>
-                    <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                      Contrat
-                    </th>
-                    {cfg.services.matin.actif && (
-                      <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                        Matin
-                      </th>
-                    )}
-                    {cfg.services.soir.actif && (
-                      <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                        Soir
-                      </th>
-                    )}
-                    <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                      H/sem.
-                    </th>
-                    <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                      Statut
-                    </th>
-                    <th className="text-muted-foreground px-3 py-2 text-left text-[10px] font-semibold tracking-widest uppercase">
-                      Alertes
-                    </th>
-                    <th className="w-8" />
-                  </tr>
-                </thead>
-                <tbody className="divide-border divide-y">
-                  {liste.map((emp) => {
-                    const sc = STATUT_CFG[emp.statut];
-                    const cc = CONTRAT_CFG[emp.contrat];
-                    const nbAlertes = emp.alertes?.length ?? 0;
-                    return (
-                      <tr
-                        key={emp.id}
-                        onClick={() => setSelected(emp)}
-                        className="hover:bg-muted/60 cursor-pointer transition-colors"
-                      >
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={cn(
-                                "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                                AVATAR_CLS
-                              )}
-                            >
-                              {emp.nom.charAt(0)}
-                              <span
-                                className={cn(
-                                  "border-background absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full border-2",
-                                  sc.dot
-                                )}
-                              />
-                            </div>
-                            <div>
-                              <p className="font-medium">{emp.nom}</p>
-                              <p className="text-muted-foreground text-xs">{emp.poste}</p>
-                            </div>
                           </div>
-                        </td>
-                        <td className="px-3 py-2.5">
+                          <p className="text-muted-foreground text-xs">{emp.poste}</p>
+                        </div>
+
+                        {/* Contrat + chevron */}
+                        <div className="flex shrink-0 items-center gap-2">
                           <span
                             className={cn(
                               "rounded border px-1.5 py-0.5 text-[10px] font-semibold",
@@ -1974,65 +1830,16 @@ export default function EquipePage() {
                           >
                             {cc.label}
                           </span>
-                        </td>
-                        {cfg.services.matin.actif && (
-                          <td className="px-3 py-2.5">
-                            {emp.services.includes("matin") ? (
-                              <span className="text-xs font-medium text-blue-700">
-                                {cfg.services.matin.debut}–{cfg.services.matin.fin}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/30 text-xs">—</span>
-                            )}
-                          </td>
-                        )}
-                        {cfg.services.soir.actif && (
-                          <td className="px-3 py-2.5">
-                            {emp.services.includes("soir") ? (
-                              <span className="text-xs font-medium text-violet-700">
-                                {cfg.services.soir.debut}–{cfg.services.soir.fin}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/30 text-xs">—</span>
-                            )}
-                          </td>
-                        )}
-                        <td className="px-3 py-2.5 font-medium">{emp.heuresHebdo} h</td>
-                        <td className="px-3 py-2.5">
-                          <span
-                            className={cn(
-                              "flex items-center gap-1.5 text-xs font-medium",
-                              emp.statut === "arrêt_maladie"
-                                ? "text-red-600"
-                                : emp.statut === "congé"
-                                  ? "text-amber-600"
-                                  : "text-emerald-600"
-                            )}
-                          >
-                            <span className={cn("h-1.5 w-1.5 rounded-full", sc.dot)} />
-                            {sc.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {nbAlertes > 0 ? (
-                            <span className="text-muted-foreground text-xs">
-                              {nbAlertes} alerte{nbAlertes > 1 ? "s" : ""}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground/30 text-xs">—</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 pr-3 text-right">
-                          <MoreHorizontal className="text-muted-foreground/40 ml-auto h-4 w-4" />
-                        </td>
-                      </tr>
+                          <ChevronRight className="text-muted-foreground h-4 w-4" />
+                        </div>
+                      </button>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <DetailPanel emp={selected} onClose={() => setSelected(null)} onSave={handleSave} />
