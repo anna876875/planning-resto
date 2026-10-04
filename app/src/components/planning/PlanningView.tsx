@@ -47,7 +47,7 @@ function parseMin(t: string) {
   return h * 60 + m;
 }
 function duration(s: Shift) {
-  if (s.type === "repos" || !s.start || !s.end) return 0;
+  if (s.type === "repos" || s.type === "conge" || !s.start || !s.end) return 0;
   return Math.max(0, (parseMin(s.end) - parseMin(s.start)) / 60);
 }
 
@@ -382,6 +382,20 @@ export function PlanningView({
           };
         }),
       })),
+    [shifts, weekDays]
+  );
+
+  const congeGrid = useMemo(
+    () =>
+      weekDays.map((day) => {
+        const dateStr = toYMD(day);
+        return {
+          dateStr,
+          absent: employees.filter((emp) =>
+            shifts.some((s) => s.employeeId === emp.id && s.date === dateStr && s.type === "conge")
+          ),
+        };
+      }),
     [shifts, weekDays]
   );
 
@@ -996,6 +1010,44 @@ export function PlanningView({
                   })}
                 </tr>
               ))}
+              {/* ── Ligne congés ── */}
+              <tr className="border-border border-t align-top">
+                <td className="bg-background sticky left-0 z-10 px-3 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
+                    <p className="text-sm font-semibold text-emerald-700">Congés</p>
+                  </div>
+                </td>
+                {congeGrid.map(({ dateStr, absent }, dayIdx) => {
+                  const isToday = dateStr === todayYMD;
+                  const isWeekend = dayIdx >= 5;
+                  return (
+                    <td
+                      key={dateStr}
+                      className={cn(
+                        "px-1 py-2 text-center align-middle",
+                        isWeekend && "bg-muted/[0.05]",
+                        isToday && "bg-primary/[0.02]"
+                      )}
+                    >
+                      {absent.length > 0 ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          {absent.map((emp) => (
+                            <span
+                              key={emp.id}
+                              className="block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] leading-snug font-medium text-emerald-700 whitespace-nowrap"
+                            >
+                              {emp.name.split(" ")[0]}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground/20 text-base">·</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
             </tbody>
           </table>
         </div>

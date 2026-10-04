@@ -97,7 +97,20 @@ export function DailyView({ initialDate }: { initialDate?: string }) {
   const dayShifts = useMemo(() => shifts.filter((s) => s.date === iso), [shifts, iso]);
 
   const totalWorking = useMemo(
-    () => new Set(dayShifts.filter((s) => s.type !== "repos").map((s) => s.employeeId)).size,
+    () =>
+      new Set(
+        dayShifts
+          .filter((s) => s.type !== "repos" && s.type !== "conge")
+          .map((s) => s.employeeId)
+      ).size,
+    [dayShifts]
+  );
+
+  const absent = useMemo(
+    () =>
+      employees.filter((emp) =>
+        dayShifts.some((s) => s.employeeId === emp.id && s.type === "conge")
+      ),
     [dayShifts]
   );
 
@@ -210,6 +223,29 @@ export function DailyView({ initialDate }: { initialDate?: string }) {
         </span>
         <div className="bg-border h-px flex-1" />
       </div>
+
+      {/* Congés du jour */}
+      {absent.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-sm font-semibold text-emerald-700">Congés</span>
+            <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              {absent.length} pers.
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {absent.map((emp) => (
+              <span
+                key={emp.id}
+                className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800"
+              >
+                {emp.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

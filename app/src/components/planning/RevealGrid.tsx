@@ -35,10 +35,16 @@ const DEPARTMENTS = [
     bg: "bg-orange-100",
     text: "text-orange-700",
   },
-  { label: "Salle", roles: ["serveur"], bg: "bg-blue-100", text: "text-blue-700" },
-  { label: "Bar", roles: ["barman"], bg: "bg-violet-100", text: "text-violet-700" },
-  { label: "Plonge", roles: ["plongeur"], bg: "bg-slate-100", text: "text-slate-600" },
+  { label: "Salle",  roles: ["serveur"],   bg: "bg-blue-100",   text: "text-blue-700" },
+  { label: "Bar",    roles: ["barman"],    bg: "bg-violet-100", text: "text-violet-700" },
+  { label: "Plonge", roles: ["plongeur"],  bg: "bg-slate-100",  text: "text-slate-600" },
 ];
+
+const ABSENCE_LABEL: Record<string, string> = {
+  conge:   "Congé",
+  maladie: "Maladie",
+  autre:   "Absent",
+};
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +58,13 @@ function getMondayOf(dateStr: string): string {
   const dow = d.getUTCDay();
   d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
   return d.toISOString().split("T")[0];
+}
+
+function absenceLabel(emp: (typeof employees)[0], dateStr: string): string {
+  const abs = emp.absences?.find(
+    (a) => a.valide && dateStr >= a.dateDebut && dateStr <= a.dateFin
+  );
+  return abs ? (ABSENCE_LABEL[abs.type] ?? "Absent") : "Absent";
 }
 
 // ─── Composant ───────────────────────────────────────────────────────────────
@@ -82,7 +95,7 @@ export default function RevealGrid({
     return mondays.flatMap((wk) => getShiftsForWeek(wk));
   }, [allDays, shiftsProp]);
 
-  // Jours avec au moins un employé qui travaille (matin ou soir)
+  // Jours avec au moins un employé qui travaille ou est en congé
   const days = useMemo(
     () =>
       allDays.filter((d) =>
@@ -128,9 +141,7 @@ export default function RevealGrid({
         <tbody>
           {SERVICES.map((svc, svcIdx) => (
             <Fragment key={svc.key}>
-              <tr
-                className={cn(svcIdx < SERVICES.length - 1 && "border-border/50 border-b")}
-              >
+              <tr className={cn(svcIdx < SERVICES.length - 1 && "border-border/50 border-b")}>
                 {/* Colonne gauche — heure d'embauche */}
                 <td className={cn("py-4 align-middle", svc.rowBg)} style={{ width: 64 }}>
                   <div className="flex flex-col items-center justify-center gap-1.5 px-2">
@@ -205,18 +216,62 @@ export default function RevealGrid({
               {/* Bande coupure entre Matin et Soir */}
               {svc.key === "matin" && (
                 <tr key="coupure" className="border-border/50 border-b">
-                  <td className="bg-muted/20 px-4 py-2 backdrop-blur-sm" style={{ width: 64 }}>
+                  <td className="bg-muted/20 px-4 py-2" style={{ width: 64 }}>
                     <span className="text-muted-foreground/60 text-[9px] font-light tracking-widest select-none">
                       coupure
                     </span>
                   </td>
                   {days.map((d) => (
-                    <td key={d} className="bg-muted/15 backdrop-blur-sm" />
+                    <td key={d} className="bg-muted/15" />
                   ))}
                 </tr>
               )}
             </Fragment>
           ))}
+
+          {/* ── Ligne congés ── */}
+          <tr className="border-border/50 border-t">
+            <td className="bg-emerald-50/60 py-3 align-middle" style={{ width: 64 }}>
+              <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+                <span className="text-[10px] font-light tracking-wide text-emerald-700 select-none">
+                  ✈
+                </span>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+              </div>
+            </td>
+            {days.map((d) => {
+              const date = parseUTC(d);
+              const isWeekend = date.getUTCDay() === 6;
+              const absent = employees.filter((emp) =>
+                shifts.some((s) => s.employeeId === emp.id && s.date === d && s.type === "conge")
+              );
+              return (
+                <td
+                  key={d}
+                  className={cn("px-2 py-2 align-top", isWeekend ? "bg-muted/20" : "bg-background")}
+                >
+                  {absent.length === 0 ? (
+                    <span className="text-muted-foreground/20 text-[10px]">—</span>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      {absent.map((emp) => (
+                        <span
+                          key={emp.id}
+                          className="block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] leading-snug font-medium text-emerald-700 whitespace-nowrap"
+                          title={absenceLabel(emp, d)}
+                        >
+                          {emp.name.split(" ")[0]}
+                          <span className="ml-1 opacity-60 text-[9px]">
+                            {absenceLabel(emp, d)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
         </tbody>
       </table>
     </div>

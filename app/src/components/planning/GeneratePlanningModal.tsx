@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Check, Loader2, Sparkles, Users, Clock, AlertTriangle } from "lucide-react";
+import { X, Check, Loader2, Sparkles, Users, Clock, AlertTriangle, UserCheck } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
@@ -58,23 +58,19 @@ function getMondaysInRange(from: string, to: string): string[] {
 }
 
 const MOIS_COURT = [
-  "jan",
-  "fév",
-  "mar",
-  "avr",
-  "mai",
-  "juin",
-  "juil",
-  "août",
-  "sep",
-  "oct",
-  "nov",
-  "déc",
+  "jan", "fév", "mar", "avr", "mai", "juin",
+  "juil", "août", "sep", "oct", "nov", "déc",
 ];
 
 function formatDate(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return `${d.getDate()} ${MOIS_COURT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatDateShort(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const JOURS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+  return `${JOURS[d.getDay()]} ${d.getDate()}`;
 }
 
 /* ── étapes de génération ───────────────────────────────────── */
@@ -102,6 +98,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
   const [showCustom, setShowCustom] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [revealIn, setRevealIn] = useState(false);
+  const [showReplacements, setShowReplacements] = useState(false);
 
   const [generatedShifts, setGeneratedShifts] = useState<Shift[]>([]);
   const [genResult, setGenResult] = useState<GenerationResult | null>(null);
@@ -126,13 +123,13 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
       return () => clearTimeout(t);
     }
 
-    // Lancer la vraie génération à mi-parcours
     if (loadingStep === 2 && !generationDoneRef.current) {
       generationDoneRef.current = true;
       const cfg = loadConfig();
       const mondays = getMondaysInRange(dateFrom, dateTo);
       const allShifts: Shift[] = [];
       const allWarnings: string[] = [];
+      const allReplacements: GenerationResult["replacements"] = [];
       let lastResult: GenerationResult | null = null;
       let totalHeures = 0;
 
@@ -140,6 +137,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         const result = generateWeekSchedule(monday, employees, cfg);
         allShifts.push(...result.shifts);
         allWarnings.push(...result.warnings);
+        allReplacements.push(...result.replacements);
         totalHeures += result.stats.heuresTotal;
         lastResult = result;
       }
@@ -149,6 +147,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
             ...lastResult,
             shifts: allShifts,
             warnings: allWarnings,
+            replacements: allReplacements,
             stats: { ...lastResult.stats, heuresTotal: totalHeures },
           }
         : null;
@@ -201,8 +200,11 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
     generationDoneRef.current = false;
     setGenResult(null);
     setGeneratedShifts([]);
+    setShowReplacements(false);
     setPhase("analyse");
   }
+
+  const empById = Object.fromEntries(employees.map((e) => [e.id, e]));
 
   return (
     <div
@@ -446,6 +448,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
         {/* ═══════════════  PHASE 3 — RÉVÉLATION  ════════════ */}
         {phase === "reveal" && (
           <>
+            {/* Header */}
             <div className="border-border flex shrink-0 items-center justify-between border-b px-5 py-4">
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
@@ -471,6 +474,14 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                         {genResult.warnings.length} alerte{genResult.warnings.length > 1 ? "s" : ""}
                       </span>
                     )}
+                    {genResult.replacements.length > 0 && (
+                      <span className="flex items-center gap-1 text-blue-600">
+                        <UserCheck className="h-3 w-3" />
+                        {genResult.replacements.length} remplacement
+                        {genResult.replacements.length > 1 ? "s" : ""} suggéré
+                        {genResult.replacements.length > 1 ? "s" : ""}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -482,12 +493,14 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
+            {/* Alertes effectif */}
             {genResult && genResult.warnings.length > 0 && (
               <div className="shrink-0 px-5 pt-3">
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                   <p className="mb-1 text-[11px] font-medium text-amber-800">
-                    {genResult.warnings.length} contrainte{genResult.warnings.length > 1 ? "s" : ""}{" "}
-                    non respectée{genResult.warnings.length > 1 ? "s" : ""}
+                    {genResult.warnings.length} contrainte
+                    {genResult.warnings.length > 1 ? "s" : ""} non respectée
+                    {genResult.warnings.length > 1 ? "s" : ""}
                   </p>
                   <ul className="space-y-0.5">
                     {genResult.warnings.slice(0, 3).map((w, i) => (
@@ -496,7 +509,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
                       </li>
                     ))}
                     {genResult.warnings.length > 3 && (
-                      <li className="text-[10px] text-amber-600 italic">
+                      <li className="text-[10px] italic text-amber-600">
                         +{genResult.warnings.length - 3} autres…
                       </li>
                     )}
@@ -505,6 +518,63 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               </div>
             )}
 
+            {/* Suggestions de remplacement */}
+            {genResult && genResult.replacements.length > 0 && (
+              <div className="shrink-0 px-5 pt-2">
+                <div className="rounded-lg border border-blue-200 bg-blue-50">
+                  <button
+                    type="button"
+                    onClick={() => setShowReplacements((s) => !s)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <UserCheck className="h-3.5 w-3.5 text-blue-600" />
+                      <span className="text-[11px] font-medium text-blue-800">
+                        {genResult.replacements.length} suggestion
+                        {genResult.replacements.length > 1 ? "s" : ""} de remplacement
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-blue-600">
+                      {showReplacements ? "Masquer" : "Voir"}
+                    </span>
+                  </button>
+
+                  {showReplacements && (
+                    <div className="border-t border-blue-200 px-3 pb-2.5 pt-2">
+                      <div className="space-y-1.5">
+                        {genResult.replacements.map((r, i) => (
+                          <div key={i} className="text-[11px]">
+                            <span className="font-semibold text-blue-800">
+                              {formatDateShort(r.date)} · {r.service}
+                            </span>
+                            <span className="text-blue-600">
+                              {" "}— {r.missing} manquant{r.missing > 1 ? "s" : ""}
+                            </span>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {r.candidates.map((c) => {
+                                const emp = empById[c.employeeId];
+                                return (
+                                  <span
+                                    key={c.employeeId}
+                                    className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-800"
+                                    title={c.raison}
+                                  >
+                                    {emp?.name.split(" ")[0] ?? c.name}
+                                    <span className="opacity-60">{c.heuresRestantes}h</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Grille */}
             <div
               className={cn(
                 "mt-2 flex min-h-0 flex-1 flex-col transition-opacity duration-500",
@@ -518,6 +588,7 @@ export function GeneratePlanningModal({ onClose }: { onClose: () => void }) {
               />
             </div>
 
+            {/* Footer */}
             <div
               className={cn(
                 "border-border flex shrink-0 gap-2 border-t px-5 py-4",
