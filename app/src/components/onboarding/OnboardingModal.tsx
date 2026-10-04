@@ -376,12 +376,18 @@ export function OnboardingModal({
   }
 
   function toggleJour(idx: number) {
-    setS((prev) => ({
-      ...prev,
-      joursOuverts: prev.joursOuverts.includes(idx)
-        ? prev.joursOuverts.filter((d) => d !== idx)
-        : [...prev.joursOuverts, idx],
-    }));
+    setS((prev) => {
+      const removing = prev.joursOuverts.includes(idx);
+      const newAffluence = { ...prev.joursAffluence };
+      if (removing) delete newAffluence[idx];
+      return {
+        ...prev,
+        joursOuverts: removing
+          ? prev.joursOuverts.filter((d) => d !== idx)
+          : [...prev.joursOuverts, idx],
+        joursAffluence: newAffluence,
+      };
+    });
   }
 
   // Toggle un jour d'affluence : l'ajoute avec les valeurs de base ou le retire
@@ -413,6 +419,7 @@ export function OnboardingModal({
     localStorage.setItem("restaurant_name", name);
     saveConfig(buildConfig(s));
     localStorage.setItem("onboarding_done", "1");
+    localStorage.setItem("onboarding_already_done", "1");
     onDone();
   }
 

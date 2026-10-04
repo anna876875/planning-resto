@@ -95,17 +95,24 @@ interface Conflict {
 
 type SvcRowDetect = { type: ServiceType; label: string; min: number };
 
-function detect(shifts: Shift[], weekDays: Date[], svcRows: SvcRowDetect[]) {
+function detect(
+  shifts: Shift[],
+  weekDays: Date[],
+  svcRows: SvcRowDetect[],
+  maxH: number,
+  maxConsecutif: number,
+  minReposH: number
+) {
   const all: Conflict[] = [];
 
   employees.forEach((emp) => {
     const es = shifts.filter((s) => s.employeeId === emp.id);
     const tot = es.reduce((a, s) => a + duration(s), 0);
-    if (tot > 35)
+    if (tot > maxH)
       all.push({
         code: "heures_depassees",
         level: "avertissement",
-        message: `${emp.name.split(" ")[0]} — ${tot}h cette semaine (max 35h)`,
+        message: `${emp.name.split(" ")[0]} — ${tot}h cette semaine (max ${maxH}h)`,
         employeeId: emp.id,
       });
 
@@ -117,7 +124,7 @@ function detect(shifts: Shift[], weekDays: Date[], svcRows: SvcRowDetect[]) {
     for (let i = 1; i < wd.length; i++) {
       const diff = (new Date(wd[i]).getTime() - new Date(wd[i - 1]).getTime()) / 86400000;
       streak = diff === 1 ? streak + 1 : 1;
-      if (streak >= 6)
+      if (streak > maxConsecutif)
         all.push({
           code: "jours_consecutifs",
           level: "avertissement",
@@ -135,7 +142,7 @@ function detect(shifts: Shift[], weekDays: Date[], svcRows: SvcRowDetect[]) {
         (new Date(`${sorted[i].date}T${sorted[i].start}`).getTime() -
           new Date(`${sorted[i - 1].date}T${sorted[i - 1].end}`).getTime()) /
         3600000;
-      if (rest >= 0 && rest < 11)
+      if (rest >= 0 && rest < minReposH)
         all.push({
           code: "repos_insuffisant",
           level: "bloquant",
@@ -160,51 +167,14 @@ function detect(shifts: Shift[], weekDays: Date[], svcRows: SvcRowDetect[]) {
     })
   );
 
-  // Index : par employé → code → message (pour infobulles)
-  const byEmpMsg: Record<string, Partial<Record<ConflictCode, string>>> = {};
-  // Index : par jour → présence d'alerte
   const byDay: Record<string, boolean> = {};
+  all.forEach((c) => { if (c.date) byDay[c.date] = true; });
 
-  all.forEach((c) => {
-    if (c.employeeId) {
-      byEmpMsg[c.employeeId] = byEmpMsg[c.employeeId] ?? {};
-      byEmpMsg[c.employeeId][c.code] = c.message;
-    }
-    if (c.date) byDay[c.date] = true;
-  });
-
-  return { all, byEmpMsg, byDay };
+  return { all, byDay };
 }
 
 // ─── Critères de génération ───────────────────────────────────────────────────
 
-const HORAIRES = [
-  { jours: "Lun – Ven", plage: "07:00 – 23:00", services: "Matin · Soir" },
-  { jours: "Samedi", plage: "10:00 – 23:00", services: "Matin · Coupure" },
-  { jours: "Dimanche", plage: "Fermé", services: "—" },
-];
-
-
-const AFFLUENCE = [
-  {
-    jours: "Vendredi soir",
-    niveau: "Élevé",
-    couleur: "text-orange-600 bg-orange-50 border-orange-200",
-    note: "+1 pers. recommandé",
-  },
-  {
-    jours: "Samedi",
-    niveau: "Très élevé",
-    couleur: "text-red-600    bg-red-50    border-red-200",
-    note: "+2 pers. recommandé",
-  },
-  {
-    jours: "Dimanche",
-    niveau: "Fermé",
-    couleur: "text-slate-500  bg-slate-50  border-slate-200",
-    note: "Repos équipe",
-  },
-];
 
 
 // ─── Services ─────────────────────────────────────────────────────────────────
@@ -387,6 +357,34 @@ export function PlanningView({
     [cfg]
   );
 
+  const dynamicHoraires = useMemo(() => {
+    const DNAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+    const openDays = Object.entries(cfg.disponibilites)
+      .filter(([, svcs]) => (svcs as string[]).length > 0)
+      .map(([d]) => DNAMES[Number(d)] ?? "");
+    if (openDays.length === 0) return [];
+    const jours = openDays.join(" · ");
+    const parts = [
+      cfg.services.matin.actif ? `${cfg.services.matin.debut}–${cfg.services.matin.fin}` : null,
+      cfg.services.soir.actif ? `${cfg.services.soir.debut}–${cfg.services.soir.fin}` : null,
+    ].filter(Boolean);
+    const svcs = [
+      cfg.services.matin.actif ? "Midi" : null,
+      cfg.services.soir.actif ? "Soir" : null,
+    ].filter(Boolean).join(" · ");
+    return [{ jours, plage: parts.join(" / "), services: svcs || "—" }];
+  }, [cfg]);
+
+  const dynamicAffluence = useMemo(() => {
+    const DNAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+    const aff = cfg.affluenceParJour ?? {};
+    return Object.entries(aff).map(([dayStr, v]) => ({
+      jours: DNAMES[Number(dayStr)] ?? "?",
+      matin: v.matin,
+      soir: v.soir,
+    }));
+  }, [cfg]);
+
   const sm = MONTH_SHORT[weekStart.getMonth()];
   const em = MONTH_SHORT[weekEnd.getMonth()];
   const weekLabel =
@@ -403,8 +401,15 @@ export function PlanningView({
     return w.filter((s) => s.date === selectedDayYMD);
   }, [shiftsMap, selectedWeekKey, selectedDayYMD]);
   const { all: allConflicts, byDay } = useMemo(
-    () => detect(shifts, weekDays, dynamicServiceRows),
-    [shifts, weekDays, dynamicServiceRows]
+    () => detect(
+      shifts,
+      weekDays,
+      dynamicServiceRows,
+      cfg.heuresContratHebdo,
+      cfg.joursConsecutifsMax,
+      cfg.reposEntreServicesH
+    ),
+    [shifts, weekDays, dynamicServiceRows, cfg]
   );
 
   const grid = useMemo(
@@ -737,7 +742,7 @@ export function PlanningView({
                 Horaires restaurant
               </p>
               <div className="divide-border divide-y rounded-lg border text-xs">
-                {HORAIRES.map((h) => (
+                {dynamicHoraires.length > 0 ? dynamicHoraires.map((h) => (
                   <div key={h.jours} className="flex items-center justify-between px-3 py-2">
                     <span className="font-medium">{h.jours}</span>
                     <span className="text-muted-foreground text-right">
@@ -745,7 +750,9 @@ export function PlanningView({
                       <span className="block opacity-60">{h.services}</span>
                     </span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-muted-foreground px-3 py-2 text-xs italic">Non configuré</p>
+                )}
               </div>
             </div>
             <div>
@@ -773,21 +780,24 @@ export function PlanningView({
                 Jours d&apos;affluence
               </p>
               <div className="space-y-1.5">
-                {AFFLUENCE.map((a) => (
+                {dynamicAffluence.length > 0 ? dynamicAffluence.map((a) => (
                   <div
                     key={a.jours}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg border px-3 py-2 text-xs",
-                      a.couleur
-                    )}
+                    className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-700"
                   >
                     <span className="font-medium">{a.jours}</span>
-                    <div className="text-right">
-                      <span className="block font-semibold">{a.niveau}</span>
-                      <span className="block opacity-70">{a.note}</span>
+                    <div className="text-right tabular-nums">
+                      {cfg.services.matin.actif && (
+                        <span className="block">Midi : {a.matin} pers.</span>
+                      )}
+                      {cfg.services.soir.actif && (
+                        <span className="block">Soir : {a.soir} pers.</span>
+                      )}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-muted-foreground text-xs italic">Aucun jour d&apos;affluence configuré</p>
+                )}
               </div>
             </div>
             <div>

@@ -49,6 +49,7 @@ export function Header() {
       <button
         onClick={() => {
           localStorage.removeItem("onboarding_done");
+          localStorage.removeItem("onboarding_already_done");
           window.location.href = "/dashboard/plannings";
         }}
         className="text-muted-foreground hover:text-foreground flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:bg-muted"
