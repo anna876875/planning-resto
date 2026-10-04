@@ -40,6 +40,9 @@ export interface PlanningConfig {
 
   // ── Avantages ────────────────────────────────────────────────
   repasPersonnel: boolean;
+
+  // ── Affluence par jour ────────────────────────────────────────
+  affluenceParJour: Record<number, { matin: number; soir: number }>;
 }
 
 export const DEFAULT_CONFIG: PlanningConfig = {
@@ -88,6 +91,7 @@ export const DEFAULT_CONFIG: PlanningConfig = {
   postesTournent: false,
   postesTournants: [],
   repasPersonnel: true,
+  affluenceParJour: {},
 };
 
 const KEY = "planning_config";

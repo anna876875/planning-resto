@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ShiftModal } from "@/components/planning/ShiftModal";
 import { employees, getShiftsForWeek } from "@/lib/planning/mock-data";
+import { loadConfig, loadConfigFromServer, DEFAULT_CONFIG, type PlanningConfig } from "@/lib/planning/config";
 import type { Shift, Employee, PlanningStatus } from "@/types/planning";
 import { cn } from "@/lib/utils";
 
@@ -92,7 +93,9 @@ interface Conflict {
   date?: string;
 }
 
-function detect(shifts: Shift[], weekDays: Date[]) {
+type SvcRowDetect = { type: ServiceType; label: string; min: number };
+
+function detect(shifts: Shift[], weekDays: Date[], svcRows: SvcRowDetect[]) {
   const all: Conflict[] = [];
 
   employees.forEach((emp) => {
@@ -143,7 +146,7 @@ function detect(shifts: Shift[], weekDays: Date[]) {
     }
   });
 
-  SERVICE_ROWS.forEach((svc) =>
+  svcRows.forEach((svc) =>
     weekDays.forEach((day) => {
       const dateStr = toYMD(day);
       const count = shifts.filter((s) => s.date === dateStr && s.type === svc.type).length;
@@ -181,17 +184,6 @@ const HORAIRES = [
   { jours: "Dimanche", plage: "Fermé", services: "—" },
 ];
 
-const EFFECTIFS = [
-  { label: "Matin", dot: "bg-blue-400", text: "text-blue-800", heures: "07:00 – 15:00", min: 2 },
-  {
-    label: "Coupure",
-    dot: "bg-amber-400",
-    text: "text-amber-800",
-    heures: "10:00 – 23:00",
-    min: 1,
-  },
-  { label: "Soir", dot: "bg-violet-400", text: "text-violet-800", heures: "15:00 – 23:00", min: 2 },
-];
 
 const AFFLUENCE = [
   {
@@ -214,11 +206,6 @@ const AFFLUENCE = [
   },
 ];
 
-const CONTRAINTES = [
-  { label: "Durée hebdomadaire max", valeur: "35 h / semaine" },
-  { label: "Repos minimum entre shifts", valeur: "11 h" },
-  { label: "Jours consécutifs max", valeur: "5 jours" },
-];
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 
@@ -264,11 +251,6 @@ const SERVICE_ROWS: {
     text: "text-violet-800",
   },
 ];
-const DEFAULT_TIMES: Record<ServiceType, { start: string; end: string }> = {
-  matin: { start: "07:00", end: "15:00" },
-  soir: { start: "15:00", end: "23:00" },
-  coupure: { start: "10:00", end: "23:00" },
-};
 const STATUS_CFG: Record<PlanningStatus, { label: string; color: string; dot: string }> = {
   brouillon: {
     label: "Brouillon",
@@ -321,9 +303,14 @@ export function PlanningView({
   const [status, setStatus] = useState<PlanningStatus>("brouillon");
   const [published, setPublished] = useState<PlanningStatus | null>(null);
   const [editing, setEditing] = useState(false);
+  const [cfg, setCfg] = useState<PlanningConfig>(DEFAULT_CONFIG);
   const [editModal, setEditModal] = useState<{ employeeId: string; date: string } | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(employees.map((e) => e.id)));
+
+  useEffect(() => {
+    void loadConfigFromServer().then((sc) => setCfg(sc ?? loadConfig()));
+  }, []);
 
   const baseWeekStart = useMemo(() => {
     if (weekStartProp) {
@@ -349,6 +336,57 @@ export function PlanningView({
   const weekEnd = weekDays[6];
   const todayYMD = toYMD(new Date());
 
+  const dynamicServiceRows = useMemo(() => {
+    const rows: typeof SERVICE_ROWS = [];
+    if (cfg.services.matin.actif) {
+      rows.push({
+        type: "matin",
+        label: "Matin",
+        hours: `${cfg.services.matin.debut} – ${cfg.services.matin.fin}`,
+        min: cfg.services.matin.effectifStable,
+        dot: "bg-blue-400",
+        chip: "bg-blue-50   text-blue-800",
+        header: "border-blue-200   bg-blue-50   text-blue-800",
+        text: "text-blue-800",
+      });
+    }
+    if (cfg.services.matin.actif && cfg.services.soir.actif) {
+      rows.push({
+        type: "coupure",
+        label: "Coupure",
+        hours: `${cfg.coupure.debut} – ${cfg.coupure.fin}`,
+        min: 0,
+        dot: "bg-amber-400",
+        chip: "bg-amber-50  text-amber-800",
+        header: "border-amber-200  bg-amber-50  text-amber-800",
+        text: "text-amber-800",
+      });
+    }
+    if (cfg.services.soir.actif) {
+      rows.push({
+        type: "soir",
+        label: "Soir",
+        hours: `${cfg.services.soir.debut} – ${cfg.services.soir.fin}`,
+        min: cfg.services.soir.effectifStable,
+        dot: "bg-violet-400",
+        chip: "bg-violet-50 text-violet-800",
+        header: "border-violet-200 bg-violet-50 text-violet-800",
+        text: "text-violet-800",
+      });
+    }
+    if (rows.length === 0) return SERVICE_ROWS;
+    return rows;
+  }, [cfg]);
+
+  const dynamicDefaultTimes = useMemo(
+    (): Record<ServiceType, { start: string; end: string }> => ({
+      matin: { start: cfg.services.matin.debut, end: cfg.services.matin.fin },
+      soir: { start: cfg.services.soir.debut, end: cfg.services.soir.fin },
+      coupure: { start: cfg.coupure.debut, end: cfg.coupure.fin },
+    }),
+    [cfg]
+  );
+
   const sm = MONTH_SHORT[weekStart.getMonth()];
   const em = MONTH_SHORT[weekEnd.getMonth()];
   const weekLabel =
@@ -364,11 +402,14 @@ export function PlanningView({
     const w = shiftsMap[selectedWeekKey] ?? getShiftsForWeek(selectedWeekKey);
     return w.filter((s) => s.date === selectedDayYMD);
   }, [shiftsMap, selectedWeekKey, selectedDayYMD]);
-  const { all: allConflicts, byDay } = useMemo(() => detect(shifts, weekDays), [shifts, weekDays]);
+  const { all: allConflicts, byDay } = useMemo(
+    () => detect(shifts, weekDays, dynamicServiceRows),
+    [shifts, weekDays, dynamicServiceRows]
+  );
 
   const grid = useMemo(
     () =>
-      SERVICE_ROWS.map((svc) => ({
+      dynamicServiceRows.map((svc) => ({
         ...svc,
         days: weekDays.map((day) => {
           const dateStr = toYMD(day);
@@ -382,7 +423,7 @@ export function PlanningView({
           };
         }),
       })),
-    [shifts, weekDays]
+    [shifts, weekDays, dynamicServiceRows]
   );
 
   const congeGrid = useMemo(
@@ -412,7 +453,7 @@ export function PlanningView({
   };
 
   function quickAdd(emp: Employee, date: string, type: ServiceType) {
-    const t = DEFAULT_TIMES[type];
+    const t = dynamicDefaultTimes[type];
     const s: Shift = { id: crypto.randomUUID(), employeeId: emp.id, date, type, ...t };
     setShiftsMap((prev) => {
       const cur = prev[weekKey] ?? getShiftsForWeek(weekKey);
@@ -712,7 +753,7 @@ export function PlanningView({
                 Effectif minimum par service
               </p>
               <div className="space-y-1.5">
-                {EFFECTIFS.map((e) => (
+                {dynamicServiceRows.filter((r) => r.type !== "coupure").map((e) => (
                   <div
                     key={e.label}
                     className="flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
@@ -720,7 +761,7 @@ export function PlanningView({
                     <div className="flex items-center gap-2">
                       <span className={cn("h-2 w-2 rounded-full", e.dot)} />
                       <span className="font-medium">{e.label}</span>
-                      <span className="text-muted-foreground">{e.heures}</span>
+                      <span className="text-muted-foreground">{e.hours}</span>
                     </div>
                     <span className={cn("font-bold", e.text)}>{e.min} pers.</span>
                   </div>
@@ -754,7 +795,11 @@ export function PlanningView({
                 Contraintes légales
               </p>
               <div className="divide-border divide-y rounded-lg border text-xs">
-                {CONTRAINTES.map((c) => (
+                {[
+                  { label: "Heures hebdo max", valeur: `${cfg.heuresContratHebdo} h / semaine` },
+                  { label: "Repos entre shifts", valeur: `${cfg.reposEntreServicesH} h` },
+                  { label: "Jours consécutifs max", valeur: `${cfg.joursConsecutifsMax} jours` },
+                ].map((c) => (
                   <div key={c.label} className="flex items-center justify-between px-3 py-2">
                     <span className="text-muted-foreground">{c.label}</span>
                     <span className="font-semibold">{c.valeur}</span>
@@ -768,7 +813,7 @@ export function PlanningView({
       {/* ── Vue quotidienne ─────────────────────────────────────── */}
       {activeTab === "planning" && viewMode === "jour" && (
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {SERVICE_ROWS.map((svc) => {
+          {dynamicServiceRows.map((svc) => {
             const working = employees.filter((emp) =>
               selectedDayShifts.some((s) => s.employeeId === emp.id && s.type === svc.type)
             );

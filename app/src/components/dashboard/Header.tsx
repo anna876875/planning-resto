@@ -1,13 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, MessageCircle, ChevronDown, Check, Store, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, MessageCircle, Store, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const RESTAURANTS = [
-  { id: "r1", nom: "Le Bistrot du Coin" },
-  { id: "r2", nom: "La Brasserie Centrale" },
-];
 
 const NOTIFICATIONS = [
   { id: 1, text: "Planning semaine 38 publié", time: "Il y a 2h", unread: true },
@@ -24,18 +19,19 @@ const SUPPORT_MSGS = [
 ];
 
 export function Header() {
-  const [restoId, setRestoId] = useState(RESTAURANTS[0].id);
-  const [restoOpen, setRestoOpen] = useState(false);
+  const [restoName, setRestoName] = useState("Mon Restaurant");
   const [notifOpen, setNotifOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [readIds, setReadIds] = useState<Set<number>>(new Set());
 
-  const resto = RESTAURANTS.find((r) => r.id === restoId) ?? RESTAURANTS[0];
+  useEffect(() => {
+    const saved = localStorage.getItem("restaurant_name");
+    if (saved) setRestoName(saved);
+  }, []);
+
   const unread = NOTIFICATIONS.filter((n) => n.unread && !readIds.has(n.id)).length;
-  const multiResto = RESTAURANTS.length > 1;
 
   function closeAll() {
-    setRestoOpen(false);
     setNotifOpen(false);
     setSupportOpen(false);
   }
@@ -43,50 +39,11 @@ export function Header() {
   return (
     <header className="border-border bg-background/95 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-sm">
       {/* Restaurant actif */}
-      <div className="relative mr-auto">
-        {multiResto ? (
-          <button
-            onClick={() => {
-              closeAll();
-              setRestoOpen((o) => !o);
-            }}
-            className="border-border hover:bg-muted flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors"
-          >
-            <span className="max-w-[200px] truncate">{resto.nom}</span>
-            <ChevronDown
-              className={cn(
-                "text-muted-foreground h-3.5 w-3.5 transition-transform duration-200",
-                restoOpen && "rotate-180"
-              )}
-            />
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 px-1">
-            <Store className="text-muted-foreground h-4 w-4 shrink-0" />
-            <span className="text-sm font-medium">{resto.nom}</span>
-          </div>
-        )}
-        {restoOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setRestoOpen(false)} />
-            <div className="border-border bg-background absolute top-full left-0 z-20 mt-1 min-w-[220px] overflow-hidden rounded-lg border shadow-lg">
-              {RESTAURANTS.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => {
-                    setRestoId(r.id);
-                    setRestoOpen(false);
-                  }}
-                  className="hover:bg-muted flex w-full items-center justify-between px-3 py-2.5 text-sm transition-colors"
-                >
-                  <span className={r.id === restoId ? "font-semibold" : ""}>{r.nom}</span>
-                  {r.id === restoId && <Check className="text-primary h-3.5 w-3.5" />}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+      <div className="mr-auto flex items-center gap-2 px-1">
+        <Store className="text-muted-foreground h-4 w-4 shrink-0" />
+        <span className="max-w-[220px] truncate text-sm font-medium">{restoName}</span>
       </div>
+
 
       {/* Relancer l'onboarding */}
       <button
